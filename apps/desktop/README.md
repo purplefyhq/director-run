@@ -1,11 +1,14 @@
 # Director Desktop Application
 
+This is the native desktop application managed by Tauri.
+
 ### Pre-requisits
 - Rust
 
 ### Installation
 
 ```bash 
+brew install rust
 bun install
 ```
 
