@@ -1,0 +1,28 @@
+{
+  "name": "director",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "format": "turbo run format",
+    "test": "turbo run test",
+    "check-types": "turbo run check-types",
+    "clean": "rm -rf .turbo node_modules && turbo run clean",
+    "cli": "turbo run cli"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "tailwindcss": "^4.0.6",
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.3"
+  },
+  "packageManager": "bun@1.1.45",
+  "workspaces": ["packages/*", "apps/*"],
+  "trustedDependencies": [
+    "@tree-sitter-grammars/tree-sitter-markdown",
+    "tree-sitter-markdown"
+  ]
+}
