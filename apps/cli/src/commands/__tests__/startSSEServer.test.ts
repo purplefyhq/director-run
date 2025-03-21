@@ -1,9 +1,9 @@
 import type { Server } from "node:http";
+import { CONFIG_FILE_PATH } from "@director/core/config/env";
+import { readConfig } from "@director/core/config/readConfig";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { CONFIG_FILE_PATH } from "../../config/env.js";
-import { readConfig } from "../../config/readConfig.js";
 import { startSSEServer } from "../startSSEServer.js";
 import { createProxyTargetServer } from "./createProxyTargetServer.js";
 const testConfig = await readConfig(CONFIG_FILE_PATH);

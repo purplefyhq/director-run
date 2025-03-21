@@ -1,5 +1,5 @@
 {
-  "name": "@director/cli",
+  "name": "@director/backend",
   "module": "index.ts",
   "type": "module",
   "version": "0.0.1",
@@ -9,13 +9,16 @@
     "@types/express": "^5.0.0"
   },
   "scripts": {
-    "cli": "bun run bin/cli.ts",
+    "backend": "bun run bin/backend.ts",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "build": "bun build ./bin/cli.ts --compile --outfile ./dist/cli",
+    "build": "bun build ./bin/backend.ts --compile --outfile ./dist/backend",
     "inspector": "npx @modelcontextprotocol/inspector",
     "clean": "rm -rf .turbo dist/*",
-    "test": "bun test"
+    "test": "echo 'No tests yet for backend app'"
+  },
+  "exports": {
+    "./router": "./src/trpc/router.ts"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -23,9 +26,11 @@
   "dependencies": {
     "@director/core": "0.0.1",
     "@modelcontextprotocol/sdk": "^1.7.0",
-    "cli-table3": "^0.6.5",
-    "commander": "^13.1.0",
+    "@trpc/server": "11.0.0-rc.700",
+    "@types/cors": "^2.8.17",
+    "cors": "^2.8.5",
     "express": "^4.21.2",
-    "vitest": "^3.0.9"
+    "superjson": "^2.2.1",
+    "zod": "^3.24.2"
   }
 }
