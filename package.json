@@ -11,7 +11,9 @@
     "test": "turbo run test",
     "check-types": "turbo run check-types",
     "clean": "rm -rf .turbo node_modules && turbo run clean",
-    "cli": "turbo run cli"
+    "cli": "turbo run cli",
+    "desktop:version": "bun run apps/desktop/scripts/version.ts",
+    "desktop:release": "version=$(bun run desktop:version print) && git tag -a \"v${version}\" -m \"Release v${version}\" && git push origin \"v${version}\""
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -20,9 +22,5 @@
     "typescript": "^5.8.2"
   },
   "packageManager": "bun@1.1.45",
-  "workspaces": ["packages/*", "apps/*"],
-  "dependencies": {
-    "semver": "^7.7.1",
-    "zx": "^8.4.1"
-  }
+  "workspaces": ["packages/*", "apps/*"]
 }
