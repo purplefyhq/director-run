@@ -26,7 +26,7 @@
           "name": "test-sse-transport",
           "transport": {
             "type": "sse",
-            "url": "http://localhost:4520/sse"
+            "url": "http://localhost:4521/sse"
           }
         }
       ]

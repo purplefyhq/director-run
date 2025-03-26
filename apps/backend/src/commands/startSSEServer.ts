@@ -1,9 +1,9 @@
-import type { Config } from "@director/core/config/types";
-import { AppError, ErrorCode } from "@director/core/error";
-import { getLogger } from "@director/core/logger";
-import { createProxyServer } from "@director/core/proxy/createProxyServer";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import express from "express";
+import type { Config } from "../config/types";
+import { AppError, ErrorCode } from "../error";
+import { getLogger } from "../logger";
+import { createProxyServer } from "../proxy/createProxyServer";
 
 const logger = getLogger("startSSEServer");
 
@@ -32,14 +32,16 @@ export const startSSEServer = async ({
     const clientIp =
       req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
     const userAgent = req.headers["user-agent"] || "unknown";
-    logger.info("Received connection", { userAgent, clientIp });
+    logger.info("Received connection-", { userAgent, clientIp });
 
     transport = new SSEServerTransport("/message", res);
+    logger.info("Post connection-");
 
     // Send an initial ping to ensure connection is established (SSE doesn't work in Bun otherwise)
-    res.write("event: ping\ndata: connected\n\n");
+    // res.write("event: ping\ndata: connected\n\n");
 
     await server.connect(transport);
+    logger.info("Post server.connect-");
 
     server.onerror = (err) => {
       logger.error(`Server onerror: ${err.stack}`);
