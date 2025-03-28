@@ -32,6 +32,20 @@ interface BackendProviderProps {
   children: React.ReactNode;
 }
 
+export function BackendWrapper({ children }: BackendProviderProps) {
+  if (typeof window.__TAURI__ !== "undefined") {
+    logger.info(
+      "Running in a Tauri environment, initializing backend provider",
+    );
+    return <BackendProvider>{children}</BackendProvider>;
+  } else {
+    logger.warn(
+      "Not running in a Tauri environment, skipping backend provider",
+    );
+    return <div>{children}</div>;
+  }
+}
+
 export function BackendProvider({ children }: BackendProviderProps) {
   const [status, setStatus] = useState<BackendStatus>("idle");
   const [error, setError] = useState<string | null>(null);
