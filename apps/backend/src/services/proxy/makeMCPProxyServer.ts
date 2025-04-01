@@ -1,11 +1,54 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import * as eventsource from "eventsource";
 import { getLogger } from "../../helpers/logger";
-import type { Server } from "../store";
+import type { MCPServer } from "../store/types";
+import { setupPromptHandlers } from "./handlers/promptsHandler";
+import { setupResourceTemplateHandlers } from "./handlers/resourceTemplatesHandler";
+import { setupResourceHandlers } from "./handlers/resourcesHandler";
+import { setupToolHandlers } from "./handlers/toolsHandler";
 
-const logger = getLogger("proxy/createClients");
+const logger = getLogger("makeMCPProxyServer");
+
+global.EventSource = eventsource.EventSource;
+
+export const makeMCPProxyServer = async (
+  servers: MCPServer[],
+): Promise<{ server: Server; cleanup: () => Promise<void> }> => {
+  const connectedClients = await createClients(servers);
+
+  const toolToClientMap = new Map<string, ConnectedClient>();
+  const resourceToClientMap = new Map<string, ConnectedClient>();
+  const promptToClientMap = new Map<string, ConnectedClient>();
+
+  const server = new Server(
+    {
+      name: "mcp-proxy-server",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {
+        prompts: {},
+        resources: { subscribe: true },
+        tools: {},
+      },
+    },
+  );
+
+  setupToolHandlers(server, connectedClients, toolToClientMap);
+  setupPromptHandlers(server, connectedClients, promptToClientMap);
+  setupResourceHandlers(server, connectedClients, resourceToClientMap);
+  setupResourceTemplateHandlers(server, connectedClients);
+
+  const cleanup = async () => {
+    await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
+  };
+
+  return { server, cleanup };
+};
 
 const sleep = (time: number) =>
   new Promise<void>((resolve) => setTimeout(() => resolve(), time));
@@ -16,7 +59,7 @@ export interface ConnectedClient {
 }
 
 const createClient = (
-  server: Server,
+  server: MCPServer,
 ): { client: Client | undefined; transport: Transport | undefined } => {
   let transport: Transport | null = null;
   try {
@@ -65,8 +108,8 @@ const createClient = (
   return { client, transport };
 };
 
-export const createClients = async (
-  servers: Server[],
+const createClients = async (
+  servers: MCPServer[],
 ): Promise<ConnectedClient[]> => {
   const clients: ConnectedClient[] = [];
 

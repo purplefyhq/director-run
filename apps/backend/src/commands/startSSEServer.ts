@@ -2,7 +2,7 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import express from "express";
 import { SSE_PORT } from "../config";
 import { getLogger } from "../helpers/logger";
-import { createProxyServer } from "../services/proxy/createProxyServer";
+import { makeMCPProxyServer } from "../services/proxy/makeMCPProxyServer";
 import { getProxy } from "../services/store";
 
 const logger = getLogger("startSSEServer");
@@ -11,24 +11,15 @@ export const startSSEServer = async (name: string) => {
   const app = express();
   const proxy = await getProxy(name);
 
-  const { server, cleanup } = await createProxyServer(proxy);
+  const { server, cleanup } = await makeMCPProxyServer(proxy.servers);
 
   let transport: SSEServerTransport;
 
   app.get("/sse", async (req, res) => {
-    const clientIp =
-      req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
-    const userAgent = req.headers["user-agent"] || "unknown";
-    logger.info("Received connection-", { userAgent, clientIp });
-
+    logger.info("Received SSE connection");
     transport = new SSEServerTransport("/message", res);
-    logger.info("Post connection-");
-
-    // Send an initial ping to ensure connection is established (SSE doesn't work in Bun otherwise)
-    // res.write("event: ping\ndata: connected\n\n");
 
     await server.connect(transport);
-    logger.info("Post server.connect-");
 
     server.onerror = (err) => {
       logger.error(`Server onerror: ${err.stack}`);
