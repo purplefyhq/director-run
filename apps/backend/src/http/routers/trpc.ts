@@ -8,7 +8,7 @@ import {
   getAllProxies,
   getProxy,
   updateProxy,
-} from "../services/store";
+} from "../../services/store";
 
 export const createTRPCContext = async (_opts: { headers: Headers }) => {
   return {};

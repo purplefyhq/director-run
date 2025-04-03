@@ -1,11 +1,17 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { makeMCPProxyServer } from "../services/proxy/makeMCPProxyServer";
-import { getProxy } from "../services/store";
+import { proxyMCPServers } from "./proxyMCPServers";
 
-export async function startStdioServer(name: string) {
-  const proxy = await getProxy(name);
+export async function proxySSEToStdio(sseUrl: string) {
   const transport = new StdioServerTransport();
-  const { server, cleanup } = await makeMCPProxyServer(proxy.servers);
+  const { server, cleanup } = await proxyMCPServers([
+    {
+      name: "test-sse-transport",
+      transport: {
+        type: "sse",
+        url: sseUrl,
+      },
+    },
+  ]);
 
   await server.connect(transport);
 

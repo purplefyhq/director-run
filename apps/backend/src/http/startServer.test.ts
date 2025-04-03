@@ -1,22 +1,74 @@
-import type { Server } from "node:http";
+import fs from "fs";
+import http from "http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { SSE_PORT } from "../../config.js";
-import { startSSEServer } from "../startSSEServer.js";
-import { createProxyTargetServer } from "./createProxyTargetServer.js";
+import { BACKEND_PORT, PROXY_DB_FILE_PATH } from "../config";
+import { startServer } from "./startServer";
 
-describe("startSSEServer", () => {
-  let serverInstance: Server;
+import type { Server } from "node:http";
+import { z } from "zod";
+import { createMCPServer } from "../services/proxy/createMCPServer";
+
+// Test configuration to use for tests
+const testConfig = {
+  proxies: [
+    {
+      name: "test-proxy",
+      servers: [
+        {
+          name: "Hackernews",
+          transport: {
+            command: "uvx",
+            args: [
+              "--from",
+              "git+https://github.com/erithwik/mcp-hn",
+              "mcp-hn",
+            ],
+          },
+        },
+        {
+          name: "Fetch",
+          transport: {
+            command: "uvx",
+            args: ["mcp-server-fetch"],
+          },
+        },
+        {
+          name: "test-sse-transport",
+          transport: {
+            type: "sse",
+            url: "http://localhost:4521/sse",
+          },
+        },
+      ],
+    },
+  ],
+};
+
+// Path to the test config file
+describe("Proxy Server Integration Tests", () => {
+  let proxyServer: http.Server | undefined;
   let proxyTargetServerInstance: Server;
 
   beforeAll(async () => {
-    proxyTargetServerInstance = await createProxyTargetServer(4521);
-    serverInstance = await startSSEServer("test-proxy");
+    fs.writeFileSync(PROXY_DB_FILE_PATH, JSON.stringify(testConfig, null, 2));
+    proxyTargetServerInstance = await createMCPServer(4521, (server) => {
+      server.tool("echo", { message: z.string() }, async ({ message }) => ({
+        content: [{ type: "text", text: `Tool echo: ${message}` }],
+      }));
+    });
+    proxyServer = await startServer();
   });
 
   afterAll(async () => {
-    await serverInstance?.close();
+    fs.unlinkSync(PROXY_DB_FILE_PATH);
+    if (proxyServer) {
+      await new Promise<void>((resolve) => {
+        proxyServer?.close(() => resolve());
+      });
+      proxyServer = undefined;
+    }
     await proxyTargetServerInstance?.close();
   });
 
@@ -35,7 +87,7 @@ describe("startSSEServer", () => {
       },
     );
     const transport = new SSEClientTransport(
-      new URL(`http://localhost:${SSE_PORT}/sse`),
+      new URL(`http://localhost:${BACKEND_PORT}/test-proxy/sse`),
     );
     await client.connect(transport);
     const toolsResult = await client.listTools();
