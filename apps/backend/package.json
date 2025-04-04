@@ -4,11 +4,11 @@
   "type": "module",
   "version": "0.0.1",
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
     "@types/bun": "latest",
-    "@types/lodash": "^4.17.16",
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
-    "@types/cors": "^2.8.17"
+    "@types/lodash": "^4.17.16",
+    "@types/semver": "^7.7.0"
   },
   "scripts": {
     "lint": "biome check .",
@@ -21,14 +21,17 @@
     "build:backend": "bun build ./bin/backend.ts --compile --outfile ./dist/backend",
     "build:cli": "bun build ./bin/cli.ts --compile --outfile ./dist/cli",
     "build": "bun run build:backend && bun run build:cli",
-    "inspector": "npx @modelcontextprotocol/inspector"
+    "inspector": "npx @modelcontextprotocol/inspector",
+    "postinstall": "bun run build"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.8.0",
+    "@trpc/server": "^11.0.2",
     "cli-table3": "^0.6.5",
+    "commander": "^13.1.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "lodash": "^4.17.21",

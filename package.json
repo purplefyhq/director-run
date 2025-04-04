@@ -4,15 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "turbo run dev",
-    "dev:desktop": "turbo run dev --filter='!@director/website'",
-    "dev:website": "turbo run dev --filter='!@director/desktop'",
     "dev:reset": "bun run clean && bun install",
     "build": "turbo run build",
-    "build:desktop": "turbo run build --filter='!@director/website'",
-    "build:website": "turbo run build --filter='!@director/desktop'",
     "start": "turbo run start",
-    "start:desktop": "turbo run start --filter='@director/desktop'",
-    "start:website": "turbo run start --filter='@director/website'",
     "lint": "turbo run lint",
     "format": "turbo run format",
     "test": "turbo run test",
@@ -25,8 +19,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
-    "tailwindcss": "^4.0.6",
-    "turbo": "^2.4.4",
+    "tailwindcss": "^4.1.2",
+    "turbo": "^2.5.0",
     "typescript": "^5.8.2"
   },
   "packageManager": "bun@1.2.5",
@@ -36,6 +30,6 @@
     "bun": "~1.2.5"
   },
   "dependencies": {
-    "vitest": "^3.0.9"
+    "vitest": "^3.1.1"
   }
 }
