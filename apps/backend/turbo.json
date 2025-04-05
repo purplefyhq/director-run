@@ -1,0 +1,14 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^@director.run/store#build"]
+    },
+    "dev": {
+      "dependsOn": ["^@director.run/store#build"]
+    },
+    "test": {
+      "dependsOn": ["^@director.run/store#build"]
+    }
+  }
+}
