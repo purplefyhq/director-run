@@ -5,8 +5,9 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import * as eventsource from "eventsource";
-import type { McpServer } from "../../config/schema";
 import { getLogger } from "../../helpers/logger";
+import { sleep } from "../../helpers/util";
+import type { McpServer } from "../db/schema";
 import { setupPromptHandlers } from "./handlers/promptsHandler";
 import { setupResourceTemplateHandlers } from "./handlers/resourceTemplatesHandler";
 import { setupResourceHandlers } from "./handlers/resourcesHandler";
@@ -19,7 +20,7 @@ global.EventSource = eventsource.EventSource;
 // Store for active proxy server connections
 export interface ProxyServerInstance {
   server: Server;
-  cleanup: () => Promise<void>;
+  close: () => Promise<void>;
   transports: Map<string, SSEServerTransport>; // Connection ID -> Transport
 }
 
@@ -53,19 +54,18 @@ export const proxyMCPServers = async (
 
   return {
     server,
-    cleanup: async () => {
-      await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
+    close: async () => {
+      await Promise.all(
+        connectedClients.map(({ close: cleanup }) => cleanup()),
+      );
     },
     transports: new Map<string, SSEServerTransport>(),
   };
 };
 
-const sleep = (time: number) =>
-  new Promise<void>((resolve) => setTimeout(() => resolve(), time));
-
 export interface ConnectedClient {
   client: Client;
-  cleanup: () => Promise<void>;
+  close: () => Promise<void>;
   name: string;
 }
 
@@ -145,7 +145,7 @@ const createClients = async (
         clients.push({
           client,
           name: server.name,
-          cleanup: async () => {
+          close: async () => {
             await transport.close();
           },
         });

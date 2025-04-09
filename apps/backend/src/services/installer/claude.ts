@@ -1,50 +1,38 @@
-import { exec } from "node:child_process";
-import { existsSync } from "node:fs";
-import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
-import { AppError, ErrorCode } from "../../helpers/error";
+import { readJSONFile, writeJSONFile } from "../../helpers/json";
 import { getLogger } from "../../helpers/logger";
+import { App, restartApp } from "../../helpers/os";
+import { getProxySSEUrl } from "../proxy/getProxySSEUrl";
 
 const CLAUDE_CONFIG_PATH = path.join(
   os.homedir(),
   "Library/Application Support/Claude/claude_desktop_config.json",
 );
 
-const CLAUDE_CONFIG_KEY_PREFIX = "mcp-cli";
-
-const execAsync = promisify(exec);
-
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+const CLAUDE_CONFIG_KEY_PREFIX = "director";
 
 const logger = getLogger("installer/claude");
 
-export async function restartClaude(): Promise<void> {
-  logger.info("restarting Claude...");
-  await execAsync("osascript -e 'tell application \"Claude\" to quit'");
-  await sleep(2000);
-  await execAsync("open -a Claude");
-  logger.info("Claude has been restarted");
-}
+type ClaudeConfig = {
+  mcpServers: Record<
+    string,
+    {
+      args: string[];
+      command: string;
+    }
+  >;
+};
 
 export const installToClaude = async ({
   name,
 }: {
   name: string;
 }) => {
-  if (!existsSync(CLAUDE_CONFIG_PATH)) {
-    throw new AppError(
-      ErrorCode.NOT_FOUND,
-      `Claude config file not found at: ${CLAUDE_CONFIG_PATH}`,
-    );
-  }
-
   logger.info(`updating to Claude configuration in ${CLAUDE_CONFIG_PATH}`);
-  // Read the current config
-  const configData = await fs.readFile(CLAUDE_CONFIG_PATH, "utf-8");
-  const claudeConfig = JSON.parse(configData);
+
+  const claudeConfig = await readJSONFile<ClaudeConfig>(CLAUDE_CONFIG_PATH);
+
   const updatedConfig = {
     ...claudeConfig,
     mcpServers: {
@@ -53,21 +41,18 @@ export const installToClaude = async ({
         args: [
           path.resolve(__dirname, "../../../bin/cli.ts"),
           "sse2stdio",
-          `http://localhost:3006/${name}/sse`,
+          getProxySSEUrl(name),
         ],
         command: "bun",
       },
     },
   };
 
-  // Write the updated config back
-  await fs.writeFile(
-    CLAUDE_CONFIG_PATH,
-    JSON.stringify(updatedConfig, null, 2),
-  );
+  await writeJSONFile(CLAUDE_CONFIG_PATH, updatedConfig);
 
   logger.info(`${name} successfully written to Claude config`);
-  await restartClaude();
+
+  await restartApp(App.CLAUDE);
 };
 
 export const uninstallFromClaude = async ({
@@ -78,28 +63,12 @@ export const uninstallFromClaude = async ({
   logger.info(
     `uninstalling from Claude configuration in ${CLAUDE_CONFIG_PATH}`,
   );
-  // Check if the Claude config file exists
-  if (!existsSync(CLAUDE_CONFIG_PATH)) {
-    throw new AppError(
-      ErrorCode.NOT_FOUND,
-      `Claude config file not found at: ${CLAUDE_CONFIG_PATH}`,
-    );
-  }
-
-  // Read the current config
-  const configData = await fs.readFile(CLAUDE_CONFIG_PATH, "utf-8");
-  const claudeConfig = JSON.parse(configData);
-
-  // Check if mcpServers exists in the config
-  if (!claudeConfig.mcpServers) {
-    logger.info("No mcpServers found in Claude config, nothing to uninstall");
-    return;
-  }
+  const claudeConfig = await readJSONFile<ClaudeConfig>(CLAUDE_CONFIG_PATH);
 
   // Create a new config object without the entry to be removed
   const serverKey = `${CLAUDE_CONFIG_KEY_PREFIX}__${name}`;
 
-  if (!claudeConfig.mcpServers[serverKey]) {
+  if (!claudeConfig?.mcpServers[serverKey]) {
     logger.info(
       `Server "${name}" not found in Claude config, nothing to uninstall`,
     );
@@ -114,12 +83,7 @@ export const uninstallFromClaude = async ({
     mcpServers: remainingServers,
   };
 
-  // Write the updated config back
-  await fs.writeFile(
-    CLAUDE_CONFIG_PATH,
-    JSON.stringify(updatedConfig, null, 2),
-  );
-
+  await writeJSONFile(CLAUDE_CONFIG_PATH, updatedConfig);
   logger.info(`${name} successfully removed from Claude config`);
-  await restartClaude();
+  await restartApp(App.CLAUDE);
 };

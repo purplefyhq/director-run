@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { optionalStringSchema } from "../helpers/validation";
-import { requiredStringSchema } from "../helpers/validation";
+
+const requiredStringSchema = z.string().trim().min(1, "Required");
+const optionalStringSchema = z.string().trim().nullish();
 
 export const StdioTransportSchema = z.object({
   type: z.literal("stdio"),
@@ -34,8 +35,8 @@ export const proxySchema = z.object({
 
 export type Proxy = z.infer<typeof proxySchema>;
 
-export const configSchema = z.object({
+export const databaseSchema = z.object({
   proxies: z.array(proxySchema),
 });
 
-export type Config = z.infer<typeof configSchema>;
+export type DatabaseSchema = z.infer<typeof databaseSchema>;

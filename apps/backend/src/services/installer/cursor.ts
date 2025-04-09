@@ -1,29 +1,75 @@
-const SQLITE_DB_PATH =
-  "/Users/barnaby/Library/Application Support/Cursor/User/globalStorage/state.vscdb";
+import os from "node:os";
+import path from "node:path";
+import { readJSONFile, writeJSONFile } from "../../helpers/json";
+import { getLogger } from "../../helpers/logger";
+import { getProxySSEUrl } from "../proxy/getProxySSEUrl";
 
-const READ_SQL_QUERY = `
-SELECT json_extract(value, '$.mcpServers') FROM ItemTable 
-WHERE key = 'src.vs.platform.reactivestorage.browser.reactiveStorageServiceImpl.persistentStorage.applicationUser'
-`;
+const CURSOR_CONFIG_PATH = path.join(os.homedir(), ".cursor/mcp.json");
+const CURSOR_CONFIG_KEY_PREFIX = "director";
 
-const WRITE_SQL_QUERY = `
-UPDATE ItemTable
-SET value = json_patch(value, 
-  json_object('mcpServers', json_array(
-    json_object(
-      'identifier', 'def12345-6789-abcd-ef01-23456789abcd',
-      'name', 'dev-server',
-      'url', 'http://localhost:8080/api',
-      'type', 'rest'
-    ),
-    json_object(
-      'identifier', 'abc98765-4321-dcba-fe10-9876543210ab',
-      'name', 'test-env',
-      'url', 'https://test-api.example.com/events',
-      'type', 'sse'
-    )
-  ))
-)
-WHERE key = 'src.vs.platform.reactivestorage.browser.reactiveStorageServiceImpl.persistentStorage.applicationUser';
+const logger = getLogger("installer/cursor");
 
-`;
+type CursorConfig = {
+  mcpServers: Record<
+    string,
+    {
+      url: string;
+    }
+  >;
+};
+
+export const installToCursor = async ({
+  name,
+}: {
+  name: string;
+}) => {
+  logger.info(`updating to Cursor configuration in ${CURSOR_CONFIG_PATH}`);
+
+  const config = await readJSONFile<CursorConfig>(CURSOR_CONFIG_PATH);
+
+  const updatedConfig = {
+    ...config,
+    mcpServers: {
+      ...(config.mcpServers ?? {}),
+      [`${CURSOR_CONFIG_KEY_PREFIX}__${name}`]: {
+        url: getProxySSEUrl(name),
+      },
+    },
+  };
+
+  await writeJSONFile(CURSOR_CONFIG_PATH, updatedConfig);
+
+  logger.info(`${name} successfully written to Cursor config`);
+};
+
+export const uninstallFromCursor = async ({
+  name,
+}: {
+  name: string;
+}) => {
+  logger.info(
+    `uninstalling from Cursor configuration in ${CURSOR_CONFIG_PATH}`,
+  );
+  const config = await readJSONFile<CursorConfig>(CURSOR_CONFIG_PATH);
+
+  // Create a new config object without the entry to be removed
+  const serverKey = `${CURSOR_CONFIG_KEY_PREFIX}__${name}`;
+
+  if (!config?.mcpServers[serverKey]) {
+    logger.info(
+      `Server "${name}" not found in Cursor config, nothing to uninstall`,
+    );
+    return;
+  }
+
+  // Remove the entry
+  const { [serverKey]: removed, ...remainingServers } = config.mcpServers;
+
+  const updatedConfig = {
+    ...config,
+    mcpServers: remainingServers,
+  };
+
+  await writeJSONFile(CURSOR_CONFIG_PATH, updatedConfig);
+  logger.info(`${name} successfully removed from Cursor config`);
+};

@@ -1,9 +1,6 @@
-import { createStore, storeExistsSync } from "../src/config";
-import { PROXY_DB_FILE_PATH } from "../src/constants";
-import { startServer } from "../src/http/startServer";
+import { initDB } from "../src/services/db";
+import { startService } from "../src/startService";
 
-if (!storeExistsSync(PROXY_DB_FILE_PATH)) {
-  await createStore(PROXY_DB_FILE_PATH);
-}
+await initDB();
 
-startServer();
+startService();

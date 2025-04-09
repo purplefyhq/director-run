@@ -4,16 +4,16 @@ import type { Server } from "node:http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import type { Config } from "../config/schema";
-import { PROXY_DB_FILE_PATH } from "../constants";
-import { DEFAULT_SERVICE_PORT } from "../constants";
-import { startServer } from "./startServer";
-
 import { z } from "zod";
-import { createMCPServer } from "../services/proxy/createMCPServer";
+import { DB_FILE_PATH } from "../../config";
+import { PORT } from "../../config";
+import { writeDBFile } from "../../services/db";
+import type { DatabaseSchema } from "../../services/db/schema";
+import { createMCPServer } from "../../services/proxy/createMCPServer";
+import { startService } from "../../startService";
 
 // Test configuration to use for tests
-const testConfig: Config = {
+const testConfig: DatabaseSchema = {
   proxies: [
     {
       id: "test-proxy",
@@ -51,23 +51,22 @@ const testConfig: Config = {
   ],
 };
 
-// Path to the test config file
-describe("Proxy Server Integration Tests", () => {
+describe("SSE Router", () => {
   let proxyServer: http.Server | undefined;
   let proxyTargetServerInstance: Server;
 
   beforeAll(async () => {
-    fs.writeFileSync(PROXY_DB_FILE_PATH, JSON.stringify(testConfig, null, 2));
+    await writeDBFile(testConfig, DB_FILE_PATH);
     proxyTargetServerInstance = await createMCPServer(4521, (server) => {
       server.tool("echo", { message: z.string() }, async ({ message }) => ({
         content: [{ type: "text", text: `Tool echo: ${message}` }],
       }));
     });
-    proxyServer = await startServer();
+    proxyServer = await startService();
   });
 
   afterAll(async () => {
-    fs.unlinkSync(PROXY_DB_FILE_PATH);
+    fs.unlinkSync(DB_FILE_PATH);
     if (proxyServer) {
       await new Promise<void>((resolve) => {
         proxyServer?.close(() => resolve());
@@ -92,7 +91,7 @@ describe("Proxy Server Integration Tests", () => {
       },
     );
     const transport = new SSEClientTransport(
-      new URL(`http://localhost:${DEFAULT_SERVICE_PORT}/test-proxy/sse`),
+      new URL(`http://localhost:${PORT}/test-proxy/sse`),
     );
     await client.connect(transport);
     const toolsResult = await client.listTools();

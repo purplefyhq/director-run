@@ -1,20 +1,13 @@
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import express from "express";
 import type { Router } from "express";
-import { getProxy } from "../../config";
-import { PROXY_DB_FILE_PATH } from "../../constants";
 import { getLogger } from "../../helpers/logger";
-import {
-  type ProxyServerInstance,
-  proxyMCPServers,
-} from "../../services/proxy/proxyMCPServers";
+import type { ProxyServerStore } from "../../services/proxy/ProxyServerStore";
 
-const logger = getLogger("Healthcheck");
+const logger = getLogger("SSE Router");
 
-export function sse(): Router {
+export function sse({ proxyStore }: { proxyStore: ProxyServerStore }): Router {
   const router = express.Router();
-
-  const proxyStore = new ProxyServerStore();
 
   // Handle SSE connections for specific proxy
   router.get("/:proxy_name/sse", async (req, res) => {
@@ -29,7 +22,7 @@ export function sse(): Router {
       query: req.query,
     });
 
-    const proxyInstance = await proxyStore.getOrCreateProxyServer(proxyName);
+    const proxyInstance = await proxyStore.get(proxyName);
     if (!proxyInstance) {
       res.status(404).send(`Proxy '${proxyName}' not found`);
       return;
@@ -40,15 +33,18 @@ export function sse(): Router {
 
     await proxyInstance.server.connect(transport);
 
-    proxyInstance.server.onerror = (err) => {
+    proxyInstance.server.onerror = (err: Error) => {
       logger.error({
         message: `Server onerror for proxy ${proxyName}`,
-        error: err.stack,
+        error: err?.stack ?? err.message,
       });
     };
 
     // Clean up transport when connection closes
     res.on("close", () => {
+      logger.info(
+        `SSE connection closed for ${proxyName}, connectionId: ${connectionId}`,
+      );
       proxyInstance.transports.delete(connectionId);
     });
   });
@@ -59,13 +55,13 @@ export function sse(): Router {
     const connectionId = req.query.connectionId?.toString();
 
     logger.info({
-      message: "Received message",
+      message: "Received message post",
       proxyName,
       connectionId,
       query: req.query,
     });
 
-    const proxyInstance = await proxyStore.getOrCreateProxyServer(proxyName);
+    const proxyInstance = await proxyStore.get(proxyName);
     if (!proxyInstance) {
       res.status(404).send(`Proxy '${proxyName}' not found`);
       return;
@@ -77,72 +73,27 @@ export function sse(): Router {
       if (transport) {
         await transport.handlePostMessage(req, res);
         return;
+      } else {
+        logger.warn(
+          `Transport not found for known connectionId ${connectionId} for proxy ${proxyName}.`,
+        );
       }
     }
 
     // Otherwise use the first available transport
     const transports = Array.from(proxyInstance.transports.values());
     if (transports.length > 0) {
+      logger.info(
+        `Using first available transport for message to proxy ${proxyName} (connectionId: ${connectionId || "none"}).`,
+      );
       await transports[0].handlePostMessage(req, res);
     } else {
+      logger.warn(
+        `No active SSE connections found for proxy ${proxyName} to handle message post.`,
+      );
       res.status(400).send("No active connections for this proxy");
     }
   });
 
-  process.on("SIGINT", async () => {
-    await proxyStore.cleanupAllProxyServers();
-    process.exit(0);
-  });
-
   return router;
-}
-
-class ProxyServerStore {
-  private proxyServers: Map<string, ProxyServerInstance> = new Map();
-
-  async getOrCreateProxyServer(
-    proxyName: string,
-  ): Promise<ProxyServerInstance | null> {
-    // Return existing proxy server if it exists
-    if (this.proxyServers.has(proxyName)) {
-      const server = this.proxyServers.get(proxyName);
-      if (server) {
-        return server;
-      }
-    }
-
-    try {
-      // Create a new proxy server
-      const proxy = await getProxy(proxyName, PROXY_DB_FILE_PATH);
-      const proxyInstance = await proxyMCPServers(proxy.servers);
-      this.proxyServers.set(proxyName, proxyInstance);
-      return proxyInstance;
-    } catch (error) {
-      logger.error({
-        message: `Failed to create proxy server for ${proxyName}`,
-        error,
-      });
-      return null;
-    }
-  }
-
-  async cleanupProxyServer(proxyName: string): Promise<void> {
-    const proxyInstance = this.proxyServers.get(proxyName);
-    if (proxyInstance) {
-      await proxyInstance.cleanup();
-      await proxyInstance.server.close();
-      this.proxyServers.delete(proxyName);
-    }
-  }
-
-  async cleanupAllProxyServers(): Promise<void> {
-    const cleanupPromises = Array.from(this.proxyServers.entries()).map(
-      async ([proxyName]) => this.cleanupProxyServer(proxyName),
-    );
-    await Promise.all(cleanupPromises);
-  }
-
-  getProxyNames(): string[] {
-    return Array.from(this.proxyServers.keys());
-  }
 }

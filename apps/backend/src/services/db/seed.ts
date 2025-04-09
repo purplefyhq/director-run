@@ -1,12 +1,13 @@
-import { writeStore } from "../config";
-import type { Config } from "../config/schema";
-import { PROXY_DB_FILE_PATH } from "../constants";
-import { getLogger } from "../helpers/logger";
+import { writeDBFile } from ".";
+import { DB_FILE_PATH } from "../../config";
+import { getLogger } from "../../helpers/logger";
+import type { DatabaseSchema } from "./schema";
+
+const logger = getLogger("config/seed");
 
 export async function seed() {
-  const logger = getLogger("seed");
-  logger.info(`Seeding database at path: ${PROXY_DB_FILE_PATH}`);
-  const seedProxyDB: Config = {
+  logger.info(`Seeding database at path: ${DB_FILE_PATH}`);
+  const seedProxyDB: DatabaseSchema = {
     proxies: [
       {
         id: "my-first-proxy",
@@ -36,6 +37,5 @@ export async function seed() {
       },
     ],
   };
-
-  await writeStore(seedProxyDB, PROXY_DB_FILE_PATH);
+  await writeDBFile(seedProxyDB, DB_FILE_PATH);
 }
