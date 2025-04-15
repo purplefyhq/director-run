@@ -6,13 +6,14 @@ import {
   ReadResourceResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import type { z } from "zod";
-import type { ConnectedClient } from "../proxyMCPServers";
+import type { ProxyTarget } from "../ProxyTarget";
 
 export function setupResourceHandlers(
   server: Server,
-  connectedClients: ConnectedClient[],
-  resourceToClientMap: Map<string, ConnectedClient>,
+  connectedClients: ProxyTarget[],
 ) {
+  const resourceToClientMap = new Map<string, ProxyTarget>();
+
   // List Resources Handler
   server.setRequestHandler(ListResourcesRequestSchema, async (request) => {
     const allResources: z.infer<typeof ListResourcesResultSchema>["resources"] =

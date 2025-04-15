@@ -19,12 +19,14 @@ export function sse({ proxyStore }: { proxyStore: ProxyServerStore }): Router {
       const proxyInstance = proxyStore.get(proxyId);
       const transport = new SSEServerTransport(`/${proxyId}/message`, res);
 
-      proxyInstance.transports.set(transport.sessionId, transport);
+      proxyInstance.getTransports().set(transport.sessionId, transport);
 
       logger.info({
         message: "SSE connection started",
         sessionId: transport.sessionId,
         proxyId,
+        userAgent: req.headers["user-agent"],
+        host: req.headers["host"],
       });
 
       /**
@@ -40,10 +42,10 @@ export function sse({ proxyStore }: { proxyStore: ProxyServerStore }): Router {
           sessionId: transport.sessionId,
           proxyId,
         });
-        proxyInstance.transports.delete(transport.sessionId);
+        proxyInstance.getTransports().delete(transport.sessionId);
       });
 
-      await proxyInstance.server.connect(transport);
+      await proxyInstance.getServer().connect(transport);
     }),
   );
 
@@ -67,7 +69,7 @@ export function sse({ proxyStore }: { proxyStore: ProxyServerStore }): Router {
         method: body.method,
       });
 
-      const transport = proxyInstance.transports.get(sessionId);
+      const transport = proxyInstance.getTransports().get(sessionId);
 
       if (!transport) {
         // TODO: Add a test case for this.

@@ -6,13 +6,13 @@ import {
   ListPromptsResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import type { z } from "zod";
-import type { ConnectedClient } from "../proxyMCPServers";
+import type { ProxyTarget } from "../ProxyTarget";
 
 export function setupPromptHandlers(
   server: Server,
-  connectedClients: ConnectedClient[],
-  promptToClientMap: Map<string, ConnectedClient>,
+  connectedClients: ProxyTarget[],
 ) {
+  const promptToClientMap = new Map<string, ProxyTarget>();
   // Get Prompt Handler
   server.setRequestHandler(GetPromptRequestSchema, async (request) => {
     const { name } = request.params;
