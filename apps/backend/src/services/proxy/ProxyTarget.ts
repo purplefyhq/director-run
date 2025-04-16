@@ -17,6 +17,12 @@ export class ProxyTarget {
     return this.targetServer.name;
   }
 
+  public toPlainObject() {
+    return {
+      ...this.targetServer,
+    };
+  }
+
   constructor(targetServer: McpServer) {
     this.targetServer = targetServer;
 
@@ -30,7 +36,7 @@ export class ProxyTarget {
         args: this.targetServer.transport.args,
         env: this.targetServer.transport.env
           ? this.targetServer.transport.env.reduce(
-              (o, v) => ({
+              (_, v) => ({
                 [v]: process.env[v] || "",
               }),
               {},
