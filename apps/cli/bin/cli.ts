@@ -15,6 +15,18 @@ program
   .description("Director CLI")
   .version(packageJson.version);
 
+function makeTable(head: string[]) {
+  return new Table({
+    head,
+    style: {
+      head: ["blue", "bold"],
+      border: [],
+      compact: true,
+    },
+
+    chars: { mid: "", "left-mid": "", "mid-mid": "", "right-mid": "" },
+  });
+}
 program
   .command("ls")
   .alias("list")
@@ -26,21 +38,47 @@ program
       if (proxies.length === 0) {
         console.log("no proxies configured yet.");
       } else {
-        const table = new Table({
-          head: ["name", "servers"],
-          style: {
-            head: ["green"],
-          },
-        });
+        const table = makeTable(["id", "name", "url"]);
+
         table.push(
-          ...proxies.map((proxy) => [
-            proxy.name,
-            proxy.servers.map((s) => s.name).join(","),
-          ]),
+          ...proxies.map((proxy) => [proxy.id, proxy.name, proxy.url]),
         );
 
         console.log(table.toString());
       }
+    }),
+  );
+
+program
+  .command("info <proxyId>")
+  .description("Get the info for a proxy")
+  .action(
+    withErrorHandler(async (proxyId: string) => {
+      const proxy = await trpc.store.get.query({ proxyId });
+
+      if (!proxy) {
+        console.error(`proxy ${proxyId} not found`);
+        return;
+      }
+
+      console.log(`id=${proxy.id}`);
+      console.log(`name=${proxy.name}`);
+
+      const table = makeTable(["name", "transport", "url/command"]);
+
+      table.push(
+        ...proxy.servers.map((server) => [
+          server.name,
+          server.transport.type,
+          server.transport.type === "sse"
+            ? server.transport.url
+            : [server.transport.command, ...(server.transport.args ?? [])].join(
+                " ",
+              ),
+        ]),
+      );
+
+      console.log(table.toString());
     }),
   );
 

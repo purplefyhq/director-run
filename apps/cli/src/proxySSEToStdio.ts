@@ -4,11 +4,10 @@ import { ProxyServer } from "../../backend/src/services/proxy/ProxyServer";
 export async function proxySSEToStdio(sseUrl: string) {
   try {
     const transport = new StdioServerTransport();
-    const proxy = await ProxyServer.create({
+    const proxy = new ProxyServer({
       id: "sse2stdio",
       name: "sse2stdio",
-      throwOnError: true,
-      targets: [
+      servers: [
         {
           name: "director-sse",
           transport: {
@@ -19,11 +18,12 @@ export async function proxySSEToStdio(sseUrl: string) {
       ],
     });
 
-    await proxy.getServer().connect(transport);
+    await proxy.connectTargets({ throwOnError: true });
+    await proxy.connect(transport);
 
     process.on("SIGINT", async () => {
       await close();
-      await proxy.getServer().close();
+      await proxy.close();
       process.exit(0);
     });
   } catch (error) {

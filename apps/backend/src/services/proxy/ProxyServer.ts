@@ -1,13 +1,18 @@
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import * as eventsource from "eventsource";
 import express from "express";
+import { PORT, VERSION } from "../../config";
 import { ErrorCode } from "../../helpers/error";
 import { AppError } from "../../helpers/error";
 import { getLogger } from "../../helpers/logger";
 import { parseMCPMessageBody } from "../../helpers/mcp";
-import type { McpServer } from "../db/schema";
-import { ProxyTarget } from "./ProxyTarget";
+import type { McpServer, Proxy as ProxyAttributes } from "../db/schema";
+import { ConnectedClient } from "./ConnectedClient";
+import { ControllerClient } from "./ControllerClient";
 import { setupPromptHandlers } from "./handlers/promptsHandler";
 import { setupResourceTemplateHandlers } from "./handlers/resourceTemplatesHandler";
 import { setupResourceHandlers } from "./handlers/resourcesHandler";
@@ -17,40 +22,16 @@ global.EventSource = eventsource.EventSource;
 
 const logger = getLogger(`ProxyServer`);
 
-export class ProxyServer {
-  private mcpServer: Server;
-  private targets: ProxyTarget[];
+export class ProxyServer extends Server {
+  private targets: ConnectedClient[];
+  private attributes: ProxyAttributes & { useController?: boolean };
   private transports: Map<string, SSEServerTransport>;
-  private proxyId: string;
-  private name: string;
-  private description?: string;
-  private throwOnError: boolean;
-  get id() {
-    return this.proxyId;
-  }
 
-  public getTargets() {
-    return this.targets;
-  }
-
-  private constructor({
-    id,
-    name,
-    description,
-    throwOnError,
-  }: {
-    id: string;
-    name: string;
-    description?: string;
-    throwOnError?: boolean;
-  }) {
-    this.proxyId = id;
-    this.name = name;
-    this.description = description;
-    this.mcpServer = new Server(
+  constructor(attributes: ProxyAttributes & { useController?: boolean }) {
+    super(
       {
-        name: "mcp-proxy-server",
-        version: "1.0.0",
+        name: attributes.name,
+        version: VERSION,
       },
       {
         capabilities: {
@@ -61,89 +42,70 @@ export class ProxyServer {
       },
     );
     this.targets = [];
+    this.attributes = attributes;
     this.transports = new Map<string, SSEServerTransport>();
-    this.throwOnError = !!throwOnError;
   }
 
-  static async create({
-    id,
-    name,
-    description,
-    targets,
-    throwOnError,
-  }: {
-    id: string;
-    name: string;
-    description?: string;
-    targets: McpServer[];
-    throwOnError?: boolean;
-  }): Promise<ProxyServer> {
-    const proxyServer = new ProxyServer({
-      id,
-      name,
-      description,
-      throwOnError,
-    });
-    await proxyServer.initialize(targets);
-    return proxyServer;
-  }
-
-  private async initialize(targets: McpServer[]): Promise<void> {
-    this.targets = await this.createTargets(targets);
-    this.setupHandlers();
-  }
-
-  private async createTargets(servers: McpServer[]): Promise<ProxyTarget[]> {
-    const targets: ProxyTarget[] = [];
-
-    for (const server of servers) {
+  public async connectTargets(
+    { throwOnError } = { throwOnError: false },
+  ): Promise<void> {
+    for (const server of this.attributes.servers) {
       try {
-        const target = new ProxyTarget(server);
-        await target.connect();
-        targets.push(target);
+        const target = new ConnectedClient(server.name);
+        await target.connect(getTransport(server));
+        this.targets.push(target);
       } catch (error) {
         logger.error({
           message: `failed to connect to target ${server.name}`,
           error,
         });
-        if (this.throwOnError) {
+        if (throwOnError) {
           throw error;
         }
       }
     }
 
-    return targets;
-  }
+    if (this.attributes.useController) {
+      const controller = new ControllerClient({ proxy: this });
+      await controller.connect();
+      this.targets.push(controller);
+    }
 
-  private setupHandlers(): void {
-    setupToolHandlers(this.mcpServer, this.targets);
-    setupPromptHandlers(this.mcpServer, this.targets);
-    setupResourceHandlers(this.mcpServer, this.targets);
-    setupResourceTemplateHandlers(this.mcpServer, this.targets);
-  }
-
-  getServer(): Server {
-    return this.mcpServer;
+    // Setup handlers
+    setupToolHandlers(this, this.targets);
+    setupPromptHandlers(this, this.targets);
+    setupResourceHandlers(this, this.targets);
+    setupResourceTemplateHandlers(this, this.targets);
   }
 
   public toPlainObject() {
-    return {
-      id: this.proxyId,
-      name: this.name,
-      description: this.description,
-      servers: this.targets.map((target) => target.toPlainObject()),
-    };
+    return { ...this.attributes, url: this.sseUrl };
+  }
+
+  get id() {
+    return this.attributes.id;
+  }
+
+  get sseUrl() {
+    return `http://localhost:${PORT}/${this.attributes.id}/sse`;
+  }
+
+  async close(): Promise<void> {
+    logger.info({ message: `shutting down`, proxyId: this.id });
+
+    await Promise.all(this.targets.map((target) => target.close()));
+    await super.close();
   }
 
   async startSSEConnection(req: express.Request, res: express.Response) {
-    const transport = new SSEServerTransport(`/${this.proxyId}/message`, res);
+    const transport = new SSEServerTransport(`/${this.id}/message`, res);
 
     this.transports.set(transport.sessionId, transport);
 
     logger.info({
       message: "SSE connection started",
       sessionId: transport.sessionId,
-      proxyId: this.proxyId,
+      proxyId: this.id,
       userAgent: req.headers["user-agent"],
       host: req.headers["host"],
     });
@@ -159,12 +121,12 @@ export class ProxyServer {
       logger.info({
         message: "SSE connection closed",
         sessionId: transport.sessionId,
-        proxyId: this.proxyId,
+        proxyId: this.id,
       });
       this.transports.delete(transport.sessionId);
     });
 
-    await this.mcpServer.connect(transport);
+    await this.connect(transport);
   }
 
   async handleSSEMessage(req: express.Request, res: express.Response) {
@@ -178,7 +140,7 @@ export class ProxyServer {
 
     logger.info({
       message: "Message received",
-      proxyId: this.proxyId,
+      proxyId: this.id,
       sessionId,
       method: body.method,
     });
@@ -190,18 +152,32 @@ export class ProxyServer {
       logger.warn({
         message: "Transport not found",
         sessionId,
-        proxyId: this.proxyId,
+        proxyId: this.id,
       });
       throw new AppError(ErrorCode.NOT_FOUND, "Transport not found");
     }
 
     await transport.handlePostMessage(req, res, body);
   }
+}
 
-  async close(): Promise<void> {
-    logger.info({ message: `shutting down`, proxyId: this.proxyId });
-
-    await Promise.all(this.targets.map((target) => target.close()));
-    await this.mcpServer.close();
+function getTransport(targetServer: McpServer): Transport {
+  if (targetServer.transport.type === "sse") {
+    return new SSEClientTransport(new URL(targetServer.transport.url));
+  } else if (targetServer.transport.type === "stdio") {
+    return new StdioClientTransport({
+      command: targetServer.transport.command,
+      args: targetServer.transport.args,
+      env: targetServer.transport.env
+        ? targetServer.transport.env.reduce(
+            (_, v) => ({
+              [v]: process.env[v] || "",
+            }),
+            {},
+          )
+        : undefined,
+    });
+  } else {
+    throw new Error(`Transport ${targetServer.name} not available.`);
   }
 }
