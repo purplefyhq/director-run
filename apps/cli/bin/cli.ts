@@ -1,248 +1,27 @@
 import {} from "@trpc/client";
-import chalk from "chalk";
-import Table from "cli-table3";
 import { Command } from "commander";
-import { seed } from "../../backend/src/services/db/seed";
-import { startService } from "../../backend/src/startService";
 import packageJson from "../package.json";
+import { registerClientCommands } from "../src/commands/client";
+import { registerDebugCommands } from "../src/commands/debug";
+import { registerProxyCommands } from "../src/commands/proxy";
+import { registerRegistryCommands } from "../src/commands/registry";
+import { registerServiceCommands } from "../src/commands/service";
 import * as config from "../src/config";
-import { mandatoryOption, withErrorHandler } from "../src/helpers";
-import { proxySSEToStdio } from "../src/proxySSEToStdio";
-import { trpc } from "../src/trpc";
+
 const program = new Command();
 
 program
-  .name(packageJson.name)
+  .name("director")
   .description("Director CLI")
   .version(packageJson.version);
 
-function makeTable(head: string[]) {
-  return new Table({
-    head,
-    style: {
-      head: ["blue", "bold"],
-      border: [],
-      compact: true,
-    },
-
-    chars: { mid: "", "left-mid": "", "mid-mid": "", "right-mid": "" },
-  });
-}
-program
-  .command("proxy:ls")
-  .description("List all configured MCP proxies")
-  .action(
-    withErrorHandler(async () => {
-      const proxies = await trpc.store.getAll.query();
-
-      if (proxies.length === 0) {
-        console.log("no proxies configured yet.");
-      } else {
-        const table = makeTable(["id", "name", "url"]);
-
-        table.push(
-          ...proxies.map((proxy) => [proxy.id, proxy.name, proxy.url]),
-        );
-
-        console.log(table.toString());
-      }
-    }),
-  );
-
-program
-  .command("proxy:get <proxyId>")
-  .description("Get the info for a proxy")
-  .action(
-    withErrorHandler(async (proxyId: string) => {
-      const proxy = await trpc.store.get.query({ proxyId });
-
-      if (!proxy) {
-        console.error(`proxy ${proxyId} not found`);
-        return;
-      }
-
-      console.log(`id=${proxy.id}`);
-      console.log(`name=${proxy.name}`);
-
-      const table = makeTable(["name", "transport", "url/command"]);
-
-      table.push(
-        ...proxy.servers.map((server) => [
-          server.name,
-          server.transport.type,
-          server.transport.type === "sse"
-            ? server.transport.url
-            : [server.transport.command, ...(server.transport.args ?? [])].join(
-                " ",
-              ),
-        ]),
-      );
-
-      console.log(table.toString());
-    }),
-  );
-function printDirectorAscii(): void {
-  console.log(`
-       _ _               _             
-      | (_)             | |            
-    __| |_ _ __ ___  ___| |_ ___  _ __ 
-   / _' | | '__/ _ \\/ __| __/ _ \\| '__|
-  | (_| | | | |  __/ (__| || (_) | |   
-   \\__,_|_|_|  \\___|\\___|\\__\\___/|_|   
-                                       
-                                       `);
-}
-
-program
-  .command("start")
-  .description("Start the proxy server for all proxies")
-  .action(
-    withErrorHandler(async () => {
-      printDirectorAscii();
-      await startService();
-    }),
-  );
+registerProxyCommands(program);
+registerClientCommands(program);
+registerRegistryCommands(program);
+registerServiceCommands(program);
 
 if (config.DEBUG_MODE) {
-  program.command("debug").action(
-    withErrorHandler(async () => {
-      console.log("----------------");
-      console.log("__dirname: ", __dirname);
-      console.log("__filename: ", __filename);
-      console.log(`config:`, config);
-      console.log("----------------");
-    }),
-  );
-  program.command("seed").action(
-    withErrorHandler(() => {
-      seed();
-    }),
-  );
+  registerDebugCommands(program);
 }
-
-program
-  .command("sse2stdio <sse_url>")
-  .description("Proxy a SSE connection to a stdio stream")
-  .action(async (sseUrl) => {
-    await proxySSEToStdio(sseUrl);
-  });
-
-interface InstallOptions {
-  client: "claude" | "cursor";
-}
-
-program
-  .command("install <proxyId>")
-  .description("Install an mcp server to a client app")
-  .addOption(
-    mandatoryOption("-c, --client [type]", "client to install to").choices([
-      "claude",
-      "cursor",
-    ]),
-  )
-  .action(
-    withErrorHandler(async (proxyId: string, options: InstallOptions) => {
-      const result = await trpc.installer.install.mutate({
-        proxyId,
-        client: options.client,
-      });
-      console.log(result);
-    }),
-  );
-
-program
-  .command("uninstall <proxyId>")
-  .description("Uninstall an mcp server from a client app")
-  .addOption(
-    mandatoryOption("-c, --client [type]", "client to uninstall from").choices([
-      "claude",
-      "cursor",
-    ]),
-  )
-  .action(
-    withErrorHandler(async (proxyId: string, options: InstallOptions) => {
-      const result = await trpc.installer.uninstall.mutate({
-        proxyId,
-        client: options.client,
-      });
-      console.log(result);
-    }),
-  );
-
-program
-  .command("claude:restart")
-  .description("Restart Claude")
-  .action(
-    withErrorHandler(async () => {
-      console.log("todo");
-    }),
-  );
-
-function truncateDescription(
-  description: string,
-  maxWidth: number = 100,
-): string {
-  if (description.length <= maxWidth) {
-    return description;
-  }
-  return description.slice(0, maxWidth - 3) + "...";
-}
-
-program
-  .command("registry:ls")
-  .description("List all available registry items")
-  .action(
-    withErrorHandler(async () => {
-      const items = await trpc.registry.list.query();
-      const table = makeTable(["Id", "Description"]);
-      table.push(
-        ...items.map((item) => {
-          return [item.id, truncateDescription(item.description)];
-        }),
-      );
-      console.log(table.toString());
-    }),
-  );
-
-type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | JsonValue[]
-  | { [key: string]: JsonValue };
-
-function colorizeJson(obj: Record<string, JsonValue>): string {
-  const entries = Object.entries(obj)
-    .map(([key, value]) => {
-      const coloredKey = chalk.white.bold(`"${key}"`);
-      const formattedValue =
-        typeof value === "string"
-          ? `"${value}"`
-          : JSON.stringify(value, null, 2);
-      return `  ${coloredKey}: ${formattedValue}`;
-    })
-    .join(",\n");
-  return `{\n${entries}\n}`;
-}
-
-program
-  .command("registry:get <entryId>")
-  .description("get detailed information about a repository item")
-  .action(
-    withErrorHandler(async (id: string) => {
-      try {
-        const item = await trpc.registry.get.query({ id });
-        console.log(colorizeJson(item));
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error(chalk.red(error.message));
-        } else {
-          console.error(chalk.red("An unknown error occurred"));
-        }
-      }
-    }),
-  );
 
 program.parse();
