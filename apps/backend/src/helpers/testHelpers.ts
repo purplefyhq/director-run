@@ -1,6 +1,14 @@
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import express from "express";
+import superjson from "superjson";
+import { PORT } from "../config";
+import type { AppRouter } from "../http/routers/trpc";
+import { ProxyServerStore } from "../services/proxy/ProxyServerStore";
+import { startService } from "../startService";
 
 export const createMCPServer = async (
   port: number,
@@ -29,3 +37,82 @@ export const createMCPServer = async (
   const instance = app.listen(port);
   return instance;
 };
+
+export type IntegrationTestVariables = {
+  trpcClient: ReturnType<typeof createTRPCClient<AppRouter>>;
+  close: () => Promise<void>;
+  proxyStore: ProxyServerStore;
+};
+
+export const setupIntegrationTest =
+  async (): Promise<IntegrationTestVariables> => {
+    const proxyStore = await ProxyServerStore.create();
+    const directorService = await startService({ proxyStore });
+
+    const trpcClient = createTRPCClient<AppRouter>({
+      links: [
+        httpBatchLink({
+          url: `http://localhost:${PORT}/trpc`,
+          transformer: superjson,
+        }),
+      ],
+    });
+
+    const close = async () => {
+      await proxyStore.purge();
+      await new Promise<void>((resolve) => {
+        directorService.close(() => resolve());
+      });
+    };
+
+    return { trpcClient, close, proxyStore };
+  };
+
+export class TestMCPClient extends Client {
+  constructor() {
+    super(
+      {
+        name: "test-client",
+        version: "0.0.0",
+      },
+      {
+        capabilities: {
+          prompts: {},
+          resources: {},
+          tools: {},
+        },
+      },
+    );
+  }
+
+  async connectToURL(url: string): Promise<void> {
+    const transport = new SSEClientTransport(new URL(url));
+    await super.connect(transport);
+  }
+}
+
+export const hackerNewsProxy = () => ({
+  name: "Hackernews",
+  transport: {
+    type: "stdio" as const,
+    command: "uvx",
+    args: ["--from", "git+https://github.com/erithwik/mcp-hn", "mcp-hn"],
+  },
+});
+
+export const fetchProxy = () => ({
+  name: "Fetch",
+  transport: {
+    type: "stdio" as const,
+    command: "uvx",
+    args: ["mcp-server-fetch"],
+  },
+});
+
+export const sseProxy = (url: string) => ({
+  name: "SSE",
+  transport: {
+    type: "sse" as const,
+    url,
+  },
+});

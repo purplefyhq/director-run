@@ -24,4 +24,15 @@ if (config.DEBUG_MODE) {
   registerDebugCommands(program);
 }
 
+program.addHelpText(
+  "after",
+  `
+
+Examples:
+  $ director create my-proxy
+  $ director server:add my-proxy fetch
+  $ director install my-proxy claude
+`,
+);
+
 program.parse();

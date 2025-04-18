@@ -1,7 +1,7 @@
 import { AppError, ErrorCode } from "../../helpers/error";
 import { getLogger } from "../../helpers/logger";
 import { db } from "../db";
-import type { McpServer } from "../db/schema";
+import type { ProxyTargetAttributes } from "../db/schema";
 import { ProxyServer } from "./ProxyServer";
 
 const logger = getLogger("ProxyServerStore");
@@ -82,7 +82,7 @@ export class ProxyServerStore {
   }: {
     name: string;
     description?: string;
-    servers?: McpServer[];
+    servers?: ProxyTargetAttributes[];
   }): Promise<ProxyServer> {
     const newProxy = await db.addProxy({
       name,
@@ -100,12 +100,39 @@ export class ProxyServerStore {
     return proxyServer;
   }
 
+  public async addServer(
+    proxyId: string,
+    server: ProxyTargetAttributes,
+  ): Promise<ProxyServer> {
+    const proxy = this.get(proxyId);
+    console.log("addServer ------->", { proxyId, server });
+    return proxy;
+  }
+
+  public async removeServer(
+    proxyId: string,
+    serverName: string,
+  ): Promise<ProxyServer> {
+    const proxy = this.get(proxyId);
+    console.log("removeServer ------->", { proxyId, serverName });
+    return proxy;
+  }
+
+  public async addServerFromRegistry(
+    proxyId: string,
+    entryId: string,
+  ): Promise<ProxyServer> {
+    const proxy = this.get(proxyId);
+    console.log("addServerFromRegistry ------->", { proxyId, entryId });
+    return proxy;
+  }
+
   public async update(
     proxyId: string,
     attributes: Partial<{
       name: string;
       description: string;
-      servers: McpServer[];
+      servers: ProxyTargetAttributes[];
     }>,
   ): Promise<ProxyServer> {
     const proxy = this.get(proxyId);

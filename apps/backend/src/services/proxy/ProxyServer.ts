@@ -10,7 +10,7 @@ import { ErrorCode } from "../../helpers/error";
 import { AppError } from "../../helpers/error";
 import { getLogger } from "../../helpers/logger";
 import { parseMCPMessageBody } from "../../helpers/mcp";
-import type { McpServer, Proxy as ProxyAttributes } from "../db/schema";
+import type { ProxyAttributes, ProxyTargetAttributes } from "../db/schema";
 import { ConnectedClient } from "./ConnectedClient";
 import { ControllerClient } from "./ControllerClient";
 import { setupPromptHandlers } from "./handlers/promptsHandler";
@@ -161,23 +161,24 @@ export class ProxyServer extends Server {
   }
 }
 
-function getTransport(targetServer: McpServer): Transport {
-  if (targetServer.transport.type === "sse") {
-    return new SSEClientTransport(new URL(targetServer.transport.url));
-  } else if (targetServer.transport.type === "stdio") {
-    return new StdioClientTransport({
-      command: targetServer.transport.command,
-      args: targetServer.transport.args,
-      env: targetServer.transport.env
-        ? targetServer.transport.env.reduce(
-            (_, v) => ({
-              [v]: process.env[v] || "",
-            }),
-            {},
-          )
-        : undefined,
-    });
-  } else {
-    throw new Error(`Transport ${targetServer.name} not available.`);
+function getTransport(targetServer: ProxyTargetAttributes): Transport {
+  switch (targetServer.transport.type) {
+    case "sse":
+      return new SSEClientTransport(new URL(targetServer.transport.url));
+    case "stdio":
+      return new StdioClientTransport({
+        command: targetServer.transport.command,
+        args: targetServer.transport.args,
+        env: targetServer.transport.env
+          ? targetServer.transport.env.reduce(
+              (_, v) => ({
+                [v]: process.env[v] || "",
+              }),
+              {},
+            )
+          : undefined,
+      });
+    default:
+      throw new Error(`Transport ${targetServer.name} not available.`);
   }
 }

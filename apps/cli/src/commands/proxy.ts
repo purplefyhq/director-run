@@ -88,6 +88,32 @@ export function registerProxyCommands(program: Command) {
     );
 
   program
+    .command("server:add <proxyId> <entryId>")
+    .description("Add a server from the registry to a proxy.")
+    .action(
+      withErrorHandler(async (proxyId: string, entryId: string) => {
+        const proxy = await trpc.store.addServerFromRegistry.mutate({
+          proxyId,
+          entryId,
+        });
+        console.log(`Registry entry ${entryId} added to ${proxy.id}`);
+      }),
+    );
+
+  program
+    .command("server:remove <proxyId> <serverName>")
+    .description("Remove a server from a proxy")
+    .action(
+      withErrorHandler(async (proxyId: string, serverName: string) => {
+        const proxy = await trpc.store.removeServer.mutate({
+          proxyId,
+          serverName,
+        });
+        console.log(`Server ${serverName} added to ${proxy.id}`);
+      }),
+    );
+
+  program
     .command("sse2stdio <sse_url>")
     .description("Proxy a SSE connection to a stdio stream")
     .action(async (sseUrl) => {

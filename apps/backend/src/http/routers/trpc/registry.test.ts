@@ -1,43 +1,22 @@
-import http from "http";
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
-import superjson from "superjson";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { AppRouter } from ".";
-import { PORT } from "../../../config";
-import { ProxyServerStore } from "../../../services/proxy/ProxyServerStore";
-import { startService } from "../../../startService";
+import {
+  type IntegrationTestVariables,
+  setupIntegrationTest,
+} from "../../../helpers/testHelpers";
 
 describe("Registry Router", () => {
-  let proxyStore: ProxyServerStore;
-  let directorService: http.Server | undefined;
-  let trpcClient: ReturnType<typeof createTRPCClient<AppRouter>>;
+  let testVariables: IntegrationTestVariables;
 
   beforeAll(async () => {
-    proxyStore = await ProxyServerStore.create();
-    directorService = await startService({ proxyStore });
-
-    trpcClient = createTRPCClient<AppRouter>({
-      links: [
-        httpBatchLink({
-          url: `http://localhost:${PORT}/trpc`,
-          transformer: superjson,
-        }),
-      ],
-    });
+    testVariables = await setupIntegrationTest();
   });
 
   afterAll(async () => {
-    await proxyStore.purge();
-    if (directorService) {
-      await new Promise<void>((resolve) => {
-        directorService?.close(() => resolve());
-      });
-      directorService = undefined;
-    }
+    await testVariables.close();
   });
 
   it("should list all repository items", async () => {
-    const items = await trpcClient.registry.list.query();
+    const items = await testVariables.trpcClient.registry.list.query();
     console.log(items[0]);
     expect(items).toBeDefined();
     expect(items.length).toBeGreaterThan(0);
@@ -46,9 +25,9 @@ describe("Registry Router", () => {
   });
 
   it("should get a single repository item", async () => {
-    const items = await trpcClient.registry.list.query();
+    const items = await testVariables.trpcClient.registry.list.query();
     const firstItem = items[0];
-    const item = await trpcClient.registry.get.query({
+    const item = await testVariables.trpcClient.registry.get.query({
       id: firstItem.id,
     });
     expect(item).toBeDefined();
@@ -64,7 +43,7 @@ describe("Registry Router", () => {
 
   it("should throw an error for non-existent repository item", async () => {
     await expect(
-      trpcClient.registry.get.query({ id: "non-existent" }),
+      testVariables.trpcClient.registry.get.query({ id: "non-existent" }),
     ).rejects.toThrow();
   });
 });
