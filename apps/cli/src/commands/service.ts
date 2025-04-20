@@ -1,5 +1,5 @@
+import { startService } from "@director.run/core/start-service";
 import { Command } from "commander";
-import { startService } from "../../../backend/src/startService";
 import * as config from "../config";
 import { withErrorHandler } from "../helpers";
 
@@ -30,7 +30,7 @@ export function registerServiceCommands(program: Command) {
     .command("config")
     .description("Print configuration variables")
     .action(
-      withErrorHandler(async () => {
+      withErrorHandler(() => {
         console.log("----------------");
         console.log(`config:`, config);
         console.log("----------------");

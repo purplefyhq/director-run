@@ -11,7 +11,8 @@
       "dist",
       "**/src-tauri/target/**",
       "**/src-tauri/binaries/**",
-      "**/src-tauri/gen/**"
+      "**/src-tauri/gen/**",
+      "db.test.json"
     ]
   },
   "formatter": {
@@ -46,7 +47,8 @@
         "noExplicitAny": "error",
         "noExtraNonNullAssertion": "error",
         "noMisleadingInstantiator": "error",
-        "noUnsafeDeclarationMerging": "error"
+        "noUnsafeDeclarationMerging": "error",
+        "useAwait": "error"
       },
       "nursery": {
         "useSortedClasses": {

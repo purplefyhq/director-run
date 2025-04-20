@@ -1,5 +1,5 @@
+import { seed } from "@director.run/core/services/db/seed";
 import { Command } from "commander";
-import { seed } from "../../../backend/src/services/db/seed";
 import { withErrorHandler } from "../helpers";
 
 export function registerDebugCommands(program: Command) {
@@ -16,7 +16,7 @@ export function registerDebugCommands(program: Command) {
     .command("debug:restart <client>")
     .description("Restart client")
     .action(
-      withErrorHandler(async () => {
+      withErrorHandler(() => {
         console.log("todo");
       }),
     );
