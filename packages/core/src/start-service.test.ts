@@ -44,7 +44,7 @@ describe("SSE Router", () => {
 
   test("should connect and list tools", async () => {
     await testVariables.proxyStore.purge();
-    await testVariables.proxyStore.create({
+    const testProxy = await testVariables.proxyStore.create({
       name: "Test Proxy",
       servers: [
         hackerNewsProxy(),
@@ -53,11 +53,7 @@ describe("SSE Router", () => {
       ],
     });
 
-    const client = new TestMCPClient();
-    await client.connectToURL(
-      `http://localhost:${env.SERVER_PORT}/test-proxy/sse`,
-    );
-
+    const client = await TestMCPClient.connectToProxy(testProxy.id);
     const toolsResult = await client.listTools();
     const expectedToolNames = [
       "get_stories",
@@ -74,35 +70,31 @@ describe("SSE Router", () => {
     }
     expect(
       toolsResult.tools.find((t) => t.name === "get_stories")?.description,
-    ).toContain("[Hackernews]");
+    ).toContain("[hackernews]");
     expect(
       toolsResult.tools.find((t) => t.name === "get_user_info")?.description,
-    ).toContain("[Hackernews]");
+    ).toContain("[hackernews]");
     expect(
       toolsResult.tools.find((t) => t.name === "search_stories")?.description,
-    ).toContain("[Hackernews]");
+    ).toContain("[hackernews]");
     expect(
       toolsResult.tools.find((t) => t.name === "get_story_info")?.description,
-    ).toContain("[Hackernews]");
+    ).toContain("[hackernews]");
     expect(
       toolsResult.tools.find((t) => t.name === "fetch")?.description,
-    ).toContain("[Fetch]");
+    ).toContain("[fetch]");
 
     await client.close();
   });
 
-  test("should be able to add proxies on the fly", async () => {
+  test("should be able to add a server to a proxy", async () => {
     await testVariables.proxyStore.purge();
     const testProxy = await testVariables.trpcClient.store.create.mutate({
       name: "Test Proxy",
       servers: [fetchProxy()],
     });
 
-    const client = new TestMCPClient();
-    await client.connectToURL(
-      `http://localhost:${env.SERVER_PORT}/test-proxy/sse`,
-    );
-
+    const client = await TestMCPClient.connectToProxy(testProxy.id);
     const toolsResult = await client.listTools();
 
     expect(toolsResult.tools.map((t) => t.name)).toContain("fetch");
@@ -113,48 +105,34 @@ describe("SSE Router", () => {
       server: hackerNewsProxy(),
     });
 
-    const client2 = new TestMCPClient();
-    await client2.connectToURL(
-      `http://localhost:${env.SERVER_PORT}/test-proxy/sse`,
-    );
-
+    const client2 = await TestMCPClient.connectToProxy(testProxy.id);
     const toolsResult2 = await client2.listTools();
     expect(toolsResult2.tools.map((t) => t.name)).toContain("fetch");
     expect(toolsResult2.tools.map((t) => t.name)).toContain("get_stories");
   });
 
-  // test("should be able to remove proxies on the fly", async () => {
-  //   await testVariables.proxyStore.purge();
-  //   const testProxy = await testVariables.trpcClient.store.create.mutate({
-  //     name: "Test Proxy",
-  //     servers: [fetchProxy(), hackerNewsProxy()],
-  //   });
+  test("should be able to remove a server from a proxy", async () => {
+    await testVariables.proxyStore.purge();
+    const testProxy = await testVariables.trpcClient.store.create.mutate({
+      name: "Test Proxy",
+      servers: [fetchProxy(), hackerNewsProxy()],
+    });
 
-  //   const client = new TestMCPClient();
-  //   await client.connectToURL(
-  //     `http://localhost:${env.SERVER_PORT}/test-proxy/sse`,
-  //   );
+    const client = await TestMCPClient.connectToProxy(testProxy.id);
+    const toolsResult = await client.listTools();
 
-  //   const toolsResult = await client.listTools();
+    expect(toolsResult.tools.map((t) => t.name)).toContain("fetch");
+    expect(toolsResult.tools.map((t) => t.name)).toContain("get_stories");
 
-  //   expect(toolsResult.tools.map((t) => t.name)).toContain("fetch");
-  //   expect(toolsResult.tools.map((t) => t.name)).toContain("get_stories");
+    await testVariables.trpcClient.store.removeServer.mutate({
+      proxyId: testProxy.id,
+      serverName: "hackernews",
+    });
 
-  //   await testVariables.trpcClient.store.removeServer.mutate({
-  //     proxyId: testProxy.id,
-  //     serverName: "hackernews",
-  //   });
+    const client2 = await TestMCPClient.connectToProxy(testProxy.id);
+    const toolsResult2 = await client2.listTools();
 
-  //   const client2 = new TestMCPClient();
-  //   await client2.connectToURL(
-  //     `http://localhost:${env.SERVER_PORT}/test-proxy/sse`,
-  //   );
-
-  //   const toolsResult2 = await client2.listTools();
-
-  //   console.log(toolsResult2.tools.map((t) => t.name));
-
-  //   expect(toolsResult2.tools.map((t) => t.name)).toContain("fetch");
-  //   expect(toolsResult2.tools.map((t) => t.name)).not.toContain("get_stories");
-  // });
+    expect(toolsResult2.tools.map((t) => t.name)).toContain("fetch");
+    expect(toolsResult2.tools.map((t) => t.name)).not.toContain("get_stories");
+  });
 });
