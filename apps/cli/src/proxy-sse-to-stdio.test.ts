@@ -1,5 +1,6 @@
 import type { Server } from "node:http";
-import { createMCPServer } from "@director.run/core/helpers/test-helpers";
+import path from "node:path";
+import { createMCPServer } from "@director.run/service/helpers/test-helpers";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
@@ -32,7 +33,11 @@ describe("proxySSEToStdio", () => {
 
     transport = new StdioClientTransport({
       command: "bun",
-      args: ["cli", "sse2stdio", "http://localhost:4522/sse"],
+      args: [
+        path.join(__dirname, "../bin/cli"),
+        "sse2stdio",
+        "http://localhost:4522/sse",
+      ],
       env: {
         ...process.env,
         LOG_LEVEL: "silent",

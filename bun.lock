@@ -17,7 +17,9 @@
         "director": "./dist/cli",
       },
       "dependencies": {
-        "@director.run/core": "workspace:*",
+        "@director.run/config": "workspace:*",
+        "@director.run/db": "workspace:*",
+        "@director.run/service": "workspace:*",
         "chalk": "^5.4.1",
         "cli-table3": "^0.6.5",
         "commander": "^13.1.0",
@@ -30,10 +32,72 @@
         "typescript": "^5",
       },
     },
-    "packages/core": {
-      "name": "@director.run/core",
+    "packages/config": {
+      "name": "@director.run/config",
+      "version": "0.0.1",
+      "devDependencies": {
+        "@types/bun": "latest",
+        "type-fest": "^4.40.0",
+        "typescript": "^5.8.2",
+        "vitest": "^3.1.1",
+      },
+    },
+    "packages/db": {
+      "name": "@director.run/db",
       "version": "0.0.1",
       "dependencies": {
+        "@types/lodash": "^4.17.16",
+        "lodash": "^4.17.21",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "type-fest": "^4.40.0",
+        "typescript": "^5.8.2",
+        "vitest": "^3.1.1",
+      },
+    },
+    "packages/installer": {
+      "name": "@director.run/installer",
+      "version": "0.0.1",
+      "dependencies": {
+        "@director.run/mcp": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "type-fest": "^4.40.0",
+        "typescript": "^5.8.2",
+        "vitest": "^3.1.1",
+      },
+    },
+    "packages/mcp": {
+      "name": "@director.run/mcp",
+      "version": "0.0.1",
+      "devDependencies": {
+        "@types/bun": "latest",
+        "type-fest": "^4.40.0",
+        "typescript": "^5.8.2",
+        "vitest": "^3.1.1",
+      },
+    },
+    "packages/registry": {
+      "name": "@director.run/registry",
+      "version": "0.0.1",
+      "devDependencies": {
+        "@types/bun": "latest",
+        "type-fest": "^4.40.0",
+        "typescript": "^5.8.2",
+        "vitest": "^3.1.1",
+      },
+    },
+    "packages/service": {
+      "name": "@director.run/service",
+      "version": "0.0.1",
+      "dependencies": {
+        "@director.run/config": "workspace:*",
+        "@director.run/db": "workspace:*",
+        "@director.run/installer": "workspace:*",
+        "@director.run/mcp": "workspace:*",
+        "@director.run/registry": "workspace:*",
         "@director.run/utilities": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.8.0",
         "@t3-oss/env-core": "^0.12.0",
@@ -48,7 +112,6 @@
         "raw-body": "^3.0.0",
         "slugify": "^1.6.6",
         "superjson": "^2.2.1",
-        "zod": "^3.24.2",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -66,6 +129,9 @@
     "packages/utilities": {
       "name": "@director.run/utilities",
       "version": "0.0.1",
+      "dependencies": {
+        "@director.run/config": "workspace:*",
+      },
       "devDependencies": {
         "@types/bun": "latest",
         "type-fest": "^4.40.0",
@@ -97,7 +163,17 @@
 
     "@director.run/cli": ["@director.run/cli@workspace:apps/cli"],
 
-    "@director.run/core": ["@director.run/core@workspace:packages/core"],
+    "@director.run/config": ["@director.run/config@workspace:packages/config"],
+
+    "@director.run/db": ["@director.run/db@workspace:packages/db"],
+
+    "@director.run/installer": ["@director.run/installer@workspace:packages/installer"],
+
+    "@director.run/mcp": ["@director.run/mcp@workspace:packages/mcp"],
+
+    "@director.run/registry": ["@director.run/registry@workspace:packages/registry"],
+
+    "@director.run/service": ["@director.run/service@workspace:packages/service"],
 
     "@director.run/utilities": ["@director.run/utilities@workspace:packages/utilities"],
 
@@ -218,6 +294,8 @@
     "@types/express-serve-static-core": ["@types/express-serve-static-core@5.0.6", "", { "dependencies": { "@types/node": "*", "@types/qs": "*", "@types/range-parser": "*", "@types/send": "*" } }, "sha512-3xhRnjJPkULekpSzgtoNYYcTWgEZkp4myc+Saevii5JPnHNvHMRlBSHDbs7Bh1iPPoVTERHEZXyhyLbMEsExsA=="],
 
     "@types/http-errors": ["@types/http-errors@2.0.4", "", {}, "sha512-D0CFMMtydbJAegzOyHjtiKPLlvnm3iTZyZRSZoLq2mRhDdmLfIWOCYPfQJ4cu2erKghU++QvjcUjp/5h7hESpA=="],
+
+    "@types/lodash": ["@types/lodash@4.17.16", "", {}, "sha512-HX7Em5NYQAXKW+1T+FiuG27NGwzJfCX3s1GjOa7ujxZa52kjJLOr4FUxT+giF6Tgxv1e+/czV/iTtBw27WTU9g=="],
 
     "@types/mime": ["@types/mime@1.3.5", "", {}, "sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w=="],
 
@@ -416,6 +494,8 @@
     "lightningcss-win32-arm64-msvc": ["lightningcss-win32-arm64-msvc@1.29.2", "", { "os": "win32", "cpu": "arm64" }, "sha512-nL7zRW6evGQqYVu/bKGK+zShyz8OVzsCotFgc7judbt6wnB2KbiKKJwBE4SGoDBQ1O94RjW4asrCjQL4i8Fhbw=="],
 
     "lightningcss-win32-x64-msvc": ["lightningcss-win32-x64-msvc@1.29.2", "", { "os": "win32", "cpu": "x64" }, "sha512-EdIUW3B2vLuHmv7urfzMI/h2fmlnOQBk1xlsDxkN1tCWKjNFjfLhGxYk8C8mzpSfr+A6jFFIi8fU6LbQGsRWjA=="],
+
+    "lodash": ["lodash@4.17.21", "", {}, "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=="],
 
     "loupe": ["loupe@3.1.3", "", {}, "sha512-kkIp7XSkP78ZxJEsSxW3712C6teJVoeHHwgo9zJ380de7IYyJ2ISlxojcH2pC5OFLewESmnRi/+XCDIEEVyoug=="],
 

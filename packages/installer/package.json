@@ -1,20 +1,20 @@
 {
-  "name": "@director.run/utilities",
+  "name": "@director.run/installer",
   "private": true,
   "type": "module",
   "version": "0.0.1",
   "exports": {
     "./*": "./src/*.ts"
   },
+  "dependencies": {
+    "@director.run/mcp": "workspace:*"
+  },
   "scripts": {
     "lint": "biome check .",
     "format": "biome format --write .",
     "clean": "rm -rf node_modules .turbo dist/*",
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
-  },
-  "dependencies": {
-    "@director.run/config": "workspace:*"
+    "test": "echo 'test'"
   },
   "devDependencies": {
     "@types/bun": "latest",

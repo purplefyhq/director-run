@@ -1,5 +1,5 @@
 {
-  "name": "@director.run/utilities",
+  "name": "@director.run/registry",
   "private": true,
   "type": "module",
   "version": "0.0.1",
@@ -11,10 +11,7 @@
     "format": "biome format --write .",
     "clean": "rm -rf node_modules .turbo dist/*",
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
-  },
-  "dependencies": {
-    "@director.run/config": "workspace:*"
+    "test": "echo 'test'"
   },
   "devDependencies": {
     "@types/bun": "latest",
