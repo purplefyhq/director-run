@@ -33,6 +33,10 @@
     },
     "cli": {
       "cache": false
+    },
+    "release": {
+      "cache": false,
+      "env": ["NPM_CONFIG_TOKEN"]
     }
   }
 }

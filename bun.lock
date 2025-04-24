@@ -12,13 +12,14 @@
     },
     "apps/cli": {
       "name": "@director.run/cli",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "bin": {
-        "director": "./dist/cli",
+        "director": "./dist/cli.js",
       },
       "dependencies": {
         "@director.run/config": "workspace:*",
         "@director.run/db": "workspace:*",
+        "@director.run/mcp": "workspace:*",
         "@director.run/service": "workspace:*",
         "chalk": "^5.4.1",
         "cli-table3": "^0.6.5",

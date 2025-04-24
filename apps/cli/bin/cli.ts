@@ -1,4 +1,6 @@
-import { env } from "@director.run/config/env";
+#!/usr/bin/env -S node --no-warnings --enable-source-maps
+
+import { isDevelopment } from "@director.run/config/env";
 import { Command } from "commander";
 import packageJson from "../package.json";
 import { registerClientCommands } from "../src/commands/client";
@@ -19,7 +21,7 @@ registerClientCommands(program);
 registerRegistryCommands(program);
 registerServiceCommands(program);
 
-if (env.NODE_ENV === "development") {
+if (isDevelopment()) {
   registerDebugCommands(program);
 }
 
