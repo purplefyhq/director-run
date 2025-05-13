@@ -1,29 +1,26 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-  type IntegrationTestVariables,
-  setupIntegrationTest,
-} from "../../test/fixtures";
+import { IntegrationTestHarness } from "../../test/integration";
 
 describe("Store Router", () => {
-  let testVariables: IntegrationTestVariables;
+  let harness: IntegrationTestHarness;
 
   beforeAll(async () => {
-    testVariables = await setupIntegrationTest();
+    harness = await IntegrationTestHarness.start();
   });
 
   afterAll(async () => {
-    await testVariables.close();
+    await harness.stop();
   });
 
   it("should get all proxies", async () => {
-    await testVariables.proxyStore.purge();
-    await testVariables.proxyStore.create({
+    await harness.purge();
+    await harness.client.store.create.mutate({
       name: "Test proxy",
     });
-    await testVariables.proxyStore.create({
+    await harness.client.store.create.mutate({
       name: "Test proxy 2",
     });
-    const proxies = await testVariables.trpcClient.store.getAll.query();
+    const proxies = await harness.client.store.getAll.query();
     expect(proxies).toHaveLength(2);
 
     expect(proxies[0].id).toBe("test-proxy");
@@ -31,11 +28,11 @@ describe("Store Router", () => {
   });
 
   it("should create a new proxy", async () => {
-    await testVariables.proxyStore.purge();
-    await testVariables.proxyStore.create({
+    await harness.purge();
+    await harness.client.store.create.mutate({
       name: "Test proxy",
     });
-    const proxy = await testVariables.trpcClient.store.get.query({
+    const proxy = await harness.client.store.get.query({
       proxyId: "test-proxy",
     });
     expect(proxy).toBeDefined();
@@ -44,15 +41,15 @@ describe("Store Router", () => {
   });
 
   it("should update a proxy", async () => {
-    await testVariables.proxyStore.purge();
-    const prox = await testVariables.proxyStore.create({
+    await harness.purge();
+    const prox = await harness.client.store.create.mutate({
       name: "Test proxy",
       description: "Old description",
     });
 
     const newDescription = "Updated description";
 
-    const updatedResponse = await testVariables.trpcClient.store.update.mutate({
+    const updatedResponse = await harness.client.store.update.mutate({
       proxyId: prox.id,
       attributes: {
         description: newDescription,
@@ -60,24 +57,24 @@ describe("Store Router", () => {
     });
     expect(updatedResponse.description).toBe(newDescription);
 
-    const proxy = await testVariables.trpcClient.store.get.query({
+    const proxy = await harness.client.store.get.query({
       proxyId: "test-proxy",
     });
     expect(proxy?.description).toBe(newDescription);
   });
 
   it("should delete a proxy", async () => {
-    await testVariables.proxyStore.purge();
-    await testVariables.proxyStore.create({
+    await harness.purge();
+    await harness.client.store.create.mutate({
       name: "Test proxy",
     });
-    await testVariables.trpcClient.store.delete.mutate({
+    await harness.client.store.delete.mutate({
       proxyId: "test-proxy",
     });
 
     expect(
-      await testVariables.trpcClient.store.get.query({ proxyId: "test-proxy" }),
+      await harness.client.store.get.query({ proxyId: "test-proxy" }),
     ).toBeUndefined();
-    expect(await testVariables.trpcClient.store.getAll.query()).toHaveLength(0);
+    expect(await harness.client.store.getAll.query()).toHaveLength(0);
   });
 });

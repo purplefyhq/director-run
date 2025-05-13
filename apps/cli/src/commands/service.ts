@@ -1,7 +1,8 @@
-import { env } from "@director.run/config/env";
+import path from "node:path";
 import { startService } from "@director.run/gateway/server";
 import { actionWithErrorHandler } from "@director.run/utilities/cli";
 import { Command } from "commander";
+import { env } from "../config";
 
 function printDirectorAscii(): void {
   console.log(`
@@ -22,7 +23,11 @@ export function registerServiceCommands(program: Command) {
     .action(
       actionWithErrorHandler(async () => {
         printDirectorAscii();
-        await startService();
+
+        await startService({
+          port: env.GATEWAY_PORT,
+          databaseFilePath: path.join(__dirname, "db.json"),
+        });
       }),
     );
 

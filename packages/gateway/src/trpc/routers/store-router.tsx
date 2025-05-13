@@ -1,9 +1,17 @@
-import { proxySchema } from "@director.run/db/schema";
-import { ErrorCode } from "@director.run/utilities/error";
-import { AppError } from "@director.run/utilities/error";
+import { AppError, ErrorCode } from "@director.run/utilities/error";
 import { z } from "zod";
-import { ProxyServerStore } from "../../services/proxy/proxy-server-store";
+import { ProxyTargetSchema } from "../../db/schema";
+import { getPathForProxy } from "../../helpers";
+import { ProxyServerStore } from "../../proxy-server-store";
 import { t } from "../server";
+
+const ProxyCreateSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  servers: z.array(ProxyTargetSchema).optional(),
+});
+
+const ProxyUpdateSchema = ProxyCreateSchema.partial();
 
 export function createProxyStoreRouter({
   proxyStore,
@@ -11,9 +19,10 @@ export function createProxyStoreRouter({
   return t.router({
     getAll: t.procedure.query(async () => {
       try {
-        return (await proxyStore.getAll()).map((proxy) =>
-          proxy.toPlainObject(),
-        );
+        return (await proxyStore.getAll()).map((proxy) => ({
+          ...proxy.toPlainObject(),
+          url: getPathForProxy(proxy.id),
+        }));
       } catch (error) {
         console.error(error);
         return [];
@@ -23,7 +32,10 @@ export function createProxyStoreRouter({
       .input(z.object({ proxyId: z.string() }))
       .query(({ input }) => {
         try {
-          return proxyStore.get(input.proxyId).toPlainObject();
+          return {
+            ...proxyStore.get(input.proxyId).toPlainObject(),
+            url: getPathForProxy(input.proxyId),
+          };
         } catch (e) {
           if (e instanceof AppError && e.code === ErrorCode.NOT_FOUND) {
             return undefined;
@@ -31,22 +43,20 @@ export function createProxyStoreRouter({
           throw e;
         }
       }),
-    create: t.procedure
-      .input(proxySchema.omit({ id: true }))
-      .mutation(async ({ input }) => {
-        return (
-          await proxyStore.create({
-            name: input.name,
-            description: input.description ?? undefined,
-            servers: input.servers,
-          })
-        ).toPlainObject();
-      }),
+    create: t.procedure.input(ProxyCreateSchema).mutation(async ({ input }) => {
+      return (
+        await proxyStore.create({
+          name: input.name,
+          description: input.description ?? undefined,
+          servers: input.servers,
+        })
+      ).toPlainObject();
+    }),
     update: t.procedure
       .input(
         z.object({
           proxyId: z.string(),
-          attributes: proxySchema.partial(),
+          attributes: ProxyUpdateSchema,
         }),
       )
       .mutation(async ({ input }) => {

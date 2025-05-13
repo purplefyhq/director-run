@@ -1,6 +1,6 @@
-import { seed } from "@director.run/db/seed";
 import { actionWithErrorHandler } from "@director.run/utilities/cli";
 import { Command } from "commander";
+import { seed } from "../db/seed";
 
 export function registerDebugCommands(program: Command) {
   program

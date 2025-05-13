@@ -1,8 +1,3 @@
-import { env } from "@director.run/config/env";
-import type {
-  ProxyAttributes,
-  ProxyTargetAttributes,
-} from "@director.run/db/schema";
 import { ErrorCode } from "@director.run/utilities/error";
 import { AppError } from "@director.run/utilities/error";
 import { getLogger } from "@director.run/utilities/logger";
@@ -15,6 +10,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import * as eventsource from "eventsource";
 import express from "express";
 import { z } from "zod";
+import packageJson from "../package.json";
 import { setupPromptHandlers } from "./handlers/prompts-handler";
 import { setupResourceTemplateHandlers } from "./handlers/resource-templates-handler";
 import { setupResourceHandlers } from "./handlers/resources-handler";
@@ -28,14 +24,16 @@ const logger = getLogger(`ProxyServer`);
 
 export class ProxyServer extends Server {
   private targets: SimpleClient[];
-  public readonly attributes: ProxyAttributes & { useController?: boolean };
+  public readonly attributes: ProxyServerAttributes & {
+    useController?: boolean;
+  };
   private transports: Map<string, SSEServerTransport>;
 
-  constructor(attributes: ProxyAttributes & { useController?: boolean }) {
+  constructor(attributes: ProxyServerAttributes & { useController?: boolean }) {
     super(
       {
         name: attributes.name,
-        version: env.VERSION,
+        version: packageJson.version,
       },
       {
         capabilities: {
@@ -85,15 +83,11 @@ export class ProxyServer extends Server {
   }
 
   public toPlainObject() {
-    return { ...this.attributes, url: this.sseUrl };
+    return this.attributes;
   }
 
   get id() {
     return this.attributes.id;
-  }
-
-  get sseUrl() {
-    return `http://localhost:${env.SERVER_PORT}/${this.attributes.id}/sse`;
   }
 
   async close(): Promise<void> {
@@ -210,3 +204,25 @@ function createControllerServer({ proxy }: { proxy: ProxyServer }) {
 
   return server;
 }
+
+export type ProxyTargetAttributes = {
+  name: string;
+  transport:
+    | {
+        type: "stdio";
+        command: string;
+        args?: string[];
+        env?: string[];
+      }
+    | {
+        type: "sse";
+        url: string;
+      };
+};
+
+export type ProxyServerAttributes = {
+  id: string;
+  name: string;
+  description?: string;
+  servers: ProxyTargetAttributes[];
+};

@@ -1,26 +1,30 @@
-import { ProxyServerStore } from "../services/proxy/proxy-server-store";
-import { startService } from "../server";
-import { trpc } from "../trpc/client";
+import { startService, Gateway } from "../server";
+import { createGatewayClient } from "../trpc/client";
+import path from "node:path";
 
 export type IntegrationTestVariables = {
-  trpcClient: typeof trpc;
+  client: ReturnType<typeof createGatewayClient>;
   close: () => Promise<void>;
-  proxyStore: ProxyServerStore;
+  gateway: Gateway;
 };
 
 export const setupIntegrationTest =
   async (): Promise<IntegrationTestVariables> => {
-    const proxyStore = await ProxyServerStore.create();
-    const directorService = await startService({ proxyStore });
+    const gateway = await startService({
+      port: 3673,
+      databaseFilePath: path.join(__dirname, "db.test.json"),
+    });
 
     const close = async () => {
-      await proxyStore.purge();
-      await new Promise<void>((resolve) => {
-        directorService.close(() => resolve());
-      });
+      await gateway.proxyStore.purge();
+      await gateway.stop();
     };
 
-    return { trpcClient: trpc, close, proxyStore };
+    return {
+      client: createGatewayClient(`http://localhost:${gateway.port}/trpc`),
+      close,
+      gateway,
+    };
   };
 
 export const makeSSETargetConfig = (params: { name: string; url: string }) => ({
@@ -59,9 +63,3 @@ export function makeFooBarServerStdioConfig() {
   });
 }
 
-export function makeEchoServerSSEConfig() {
-  return makeSSETargetConfig({
-    name: "echo",
-    url: `http://localhost:4521/sse`,
-  });
-}
