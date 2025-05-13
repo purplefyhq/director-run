@@ -14,19 +14,20 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import * as eventsource from "eventsource";
 import express from "express";
-import { ConnectedClient } from "./connected-client";
-import { ControllerClient } from "./controller-client";
+import { z } from "zod";
 import { setupPromptHandlers } from "./handlers/prompts-handler";
 import { setupResourceTemplateHandlers } from "./handlers/resource-templates-handler";
 import { setupResourceHandlers } from "./handlers/resources-handler";
 import { setupToolHandlers } from "./handlers/tools-handler";
+import { SimpleClient } from "./simple-client";
+import { SimpleServer } from "./simple-server";
 
 global.EventSource = eventsource.EventSource;
 
 const logger = getLogger(`ProxyServer`);
 
 export class ProxyServer extends Server {
-  private targets: ConnectedClient[];
+  private targets: SimpleClient[];
   public readonly attributes: ProxyAttributes & { useController?: boolean };
   private transports: Map<string, SSEServerTransport>;
 
@@ -54,7 +55,7 @@ export class ProxyServer extends Server {
   ): Promise<void> {
     for (const server of this.attributes.servers) {
       try {
-        const target = new ConnectedClient(server.name);
+        const target = new SimpleClient(server.name);
         await target.connect(getTransport(server));
         this.targets.push(target);
       } catch (error) {
@@ -69,9 +70,11 @@ export class ProxyServer extends Server {
     }
 
     if (this.attributes.useController) {
-      const controller = new ControllerClient({ proxy: this });
-      await controller.connect();
-      this.targets.push(controller);
+      const controllerServer = createControllerServer({ proxy: this });
+      const controllerClient =
+        await SimpleClient.createAndConnectToServer(controllerServer);
+
+      this.targets.push(controllerClient);
     }
 
     // Setup handlers
@@ -184,4 +187,26 @@ function getTransport(targetServer: ProxyTargetAttributes): Transport {
     default:
       throw new Error(`Transport ${targetServer.name} not available.`);
   }
+}
+
+function createControllerServer({ proxy }: { proxy: ProxyServer }) {
+  const server = new SimpleServer(`${proxy.id}-controller`);
+  server
+    .tool("list_targets")
+    .schema(z.object({}))
+    .description("List proxy targets")
+    .handle(({}) => {
+      return Promise.resolve({
+        status: "success",
+        data: [
+          {
+            name: "test",
+            description: "test",
+            url: "https://github.com/test",
+          },
+        ],
+      });
+    });
+
+  return server;
 }
