@@ -1,12 +1,9 @@
-import {
-  installToClaude,
-  uninstallFromClaude,
-} from "@director.run/installer/claude";
-import {
-  installToCursor,
-  uninstallFromCursor,
-} from "@director.run/installer/cursor";
+import { ClaudeInstaller } from "@director.run/installer/claude";
+import { CursorInstaller } from "@director.run/installer/cursor";
+import { isProduction } from "@director.run/utilities/env";
+import { joinURL } from "@director.run/utilities/url";
 import { z } from "zod";
+import { getPathForProxy } from "../../helpers";
 import type { ProxyServerStore } from "../../proxy-server-store";
 import { t } from "../server";
 
@@ -14,61 +11,84 @@ export function createInstallerRouter({
   proxyStore,
 }: { proxyStore: ProxyServerStore }) {
   return t.router({
-    install: t.procedure
-      .input(
-        z.object({
-          proxyId: z.string(),
-          client: z.enum(["claude", "cursor"]),
-        }),
-      )
-      .mutation(async ({ input }) => {
-        try {
+    claude: t.router({
+      install: t.procedure
+        .input(
+          z.object({
+            proxyId: z.string(),
+            baseUrl: z.string(),
+            cliPath: z.string(),
+          }),
+        )
+        .mutation(async ({ input }) => {
           const proxy = proxyStore.get(input.proxyId);
-          if (input.client === "claude") {
-            await installToClaude({ proxyServer: proxy });
+          const proxySSEUrl = joinURL(input.baseUrl, getPathForProxy(proxy.id));
+          const installer = await ClaudeInstaller.create();
+          if (isProduction()) {
+            // In production, we don't use bun as the CLI is compiled to a binary
+            await installer.install({
+              name: proxy.id,
+              transport: {
+                command: input.cliPath,
+                args: ["sse2stdio", proxySSEUrl],
+              },
+            });
           } else {
-            await installToCursor({ proxyServer: proxy });
+            await installer.install({
+              name: proxy.id,
+              transport: {
+                command: "bun",
+                args: [input.cliPath, "sse2stdio", proxySSEUrl],
+              },
+            });
           }
-          return {
-            status: "ok" as const,
-          };
-        } catch (error) {
-          return {
-            status: "fail" as const,
-            configPath: "",
-            errorMessage:
-              error instanceof Error ? error.message : "Unknown error",
-          };
-        }
-      }),
-    uninstall: t.procedure
-      .input(
-        z.object({
-          proxyId: z.string(),
-          client: z.enum(["claude", "cursor"]),
         }),
-      )
-      .mutation(async ({ input }) => {
-        try {
+      uninstall: t.procedure
+        .input(z.object({ proxyId: z.string() }))
+        .mutation(async ({ input }) => {
           const proxy = proxyStore.get(input.proxyId);
-
-          if (input.client === "claude") {
-            await uninstallFromClaude({ proxyServer: proxy });
-          } else {
-            await uninstallFromCursor({ proxyServer: proxy });
-          }
-
-          return {
-            status: "ok" as const,
-          };
-        } catch (error) {
-          return {
-            status: "fail" as const,
-            configPath: "",
-            errorMessage:
-              error instanceof Error ? error.message : "Unknown error",
-          };
-        }
+          const installer = await ClaudeInstaller.create();
+          await installer.uninstall(proxy.id);
+        }),
+      list: t.procedure.query(async () => {
+        const installer = await ClaudeInstaller.create();
+        return installer.list();
       }),
+      restart: t.procedure.mutation(async () => {
+        const installer = await ClaudeInstaller.create();
+        await installer.restartClaude();
+      }),
+      purge: t.procedure.mutation(async () => {
+        const installer = await ClaudeInstaller.create();
+        await installer.purge();
+      }),
+    }),
+    cursor: t.router({
+      install: t.procedure
+        .input(z.object({ proxyId: z.string(), baseUrl: z.string() }))
+        .mutation(async ({ input }) => {
+          const proxy = proxyStore.get(input.proxyId);
+          const installer = await CursorInstaller.create();
+          await installer.install({
+            name: proxy.id,
+            url: joinURL(input.baseUrl, getPathForProxy(proxy.id)),
+          });
+        }),
+      uninstall: t.procedure
+        .input(z.object({ proxyId: z.string() }))
+        .mutation(async ({ input }) => {
+          const proxy = proxyStore.get(input.proxyId);
+          const installer = await CursorInstaller.create();
+          await installer.uninstall(proxy.id);
+        }),
+      list: t.procedure.query(async () => {
+        const installer = await CursorInstaller.create();
+        return installer.list();
+      }),
+      purge: t.procedure.mutation(async () => {
+        const installer = await CursorInstaller.create();
+        await installer.purge();
+      }),
+    }),
   });
 }

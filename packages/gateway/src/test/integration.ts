@@ -20,11 +20,11 @@ export class IntegrationTestHarness {
 
     public static async start() {
         const gateway = await startService({
-            port: 3673,
+            port: 4673,
             databaseFilePath: path.join(__dirname, "db.test.json"),
         });
 
-        const client = createGatewayClient(`http://localhost:${gateway.port}/trpc`);
+        const client = createGatewayClient(`http://localhost:${gateway.port}`);
 
         return new IntegrationTestHarness({
             gateway,
