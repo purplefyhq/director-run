@@ -1,9 +1,9 @@
 import { AppError, ErrorCode } from "@director.run/utilities/error";
+import { t } from "@director.run/utilities/trpc";
 import { z } from "zod";
 import { ProxyTargetSchema } from "../../db/schema";
 import { getPathForProxy } from "../../helpers";
 import { ProxyServerStore } from "../../proxy-server-store";
-import { t } from "../server";
 
 const ProxyCreateSchema = z.object({
   name: z.string(),
@@ -102,11 +102,16 @@ export function createProxyStoreRouter({
       .input(
         z.object({
           proxyId: z.string(),
-          entryId: z.string(),
+          entryName: z.string(),
+          registryUrl: z.string().url(),
         }),
       )
       .mutation(({ input }) => {
-        return proxyStore.addServerFromRegistry(input.proxyId, input.entryId);
+        return proxyStore.addServerFromRegistry(
+          input.proxyId,
+          input.entryName,
+          input.registryUrl,
+        );
       }),
     removeServer: t.procedure
       .input(

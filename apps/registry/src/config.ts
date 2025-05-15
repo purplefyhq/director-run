@@ -1,16 +1,21 @@
-import { createEnv } from "@director.run/utilities/env";
+import path from "path";
+import { createEnv, isProduction, isTest } from "@director.run/utilities/env";
 import { z } from "zod";
 
 export const env = createEnv({
+  envFilePath: getEnvFilePath(),
   envVars: {
-    REGISTRY_PORT: z.number({ coerce: true }).optional().default(3673),
-    DATABASE_URL: z
-      .string()
-      .default(
-        "postgresql://postgres:travel-china-spend-nothing@localhost:5432/director-registry",
-      ),
-    // LOG_PRETTY: z.boolean().optional().default(true),
-    // LOG_LEVEL: z.string().optional().default("trace"),
-    // LOG_ERROR_STACK: z.boolean().optional().default(true),
+    REGISTRY_PORT: z.number({ coerce: true }),
+    DATABASE_URL: z.string(),
   },
 });
+
+function getEnvFilePath() {
+  if (isTest()) {
+    return path.join(__dirname, "../env/.env.test");
+  } else if (isProduction()) {
+    return path.join(__dirname, "../env/.env");
+  } else {
+    return path.join(__dirname, "../env/.env.dev");
+  }
+}

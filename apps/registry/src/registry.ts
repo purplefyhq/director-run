@@ -3,66 +3,61 @@ import { getLogger } from "@director.run/utilities/logger";
 import { errorRequestHandler } from "@director.run/utilities/middleware";
 import cors from "cors";
 import express from "express";
-import { Database } from "./db";
-import { ProxyServerStore } from "./proxy-server-store";
-import { createMCPRouter } from "./routers/mcp";
+import { type Store, createStore } from "./db/store";
 import { createTRPCExpressMiddleware } from "./routers/trpc";
 
-const logger = getLogger("Gateway");
+const logger = getLogger("registry");
 
-export class Gateway {
-  public readonly proxyStore: ProxyServerStore;
+export class Registry {
   public readonly port: number;
   private server: Server;
+  public readonly store: Store;
 
   private constructor(attribs: {
-    proxyStore: ProxyServerStore;
     port: number;
-    db: Database;
     server: Server;
+    store: Store;
   }) {
     this.port = attribs.port;
-    this.proxyStore = attribs.proxyStore;
     this.server = attribs.server;
+    this.store = attribs.store;
   }
 
   public static async start(attribs: {
     port: number;
-    databaseFilePath: string;
+    connectionString?: string;
   }) {
-    logger.info(`starting director...`);
+    logger.info(`starting registry...`);
 
-    const db = await Database.connect(attribs.databaseFilePath);
-    const proxyStore = await ProxyServerStore.create(db);
     const app = express();
+    const store = createStore();
 
     app.use(cors());
-    app.use("/", createMCPRouter({ proxyStore }));
-    app.use("/trpc", createTRPCExpressMiddleware({ proxyStore }));
+    app.use(express.json());
+    app.use("/trpc", createTRPCExpressMiddleware({ store }));
     app.use(errorRequestHandler);
 
     const server = app.listen(attribs.port, () => {
-      logger.info(`director gateway running on port ${attribs.port}`);
+      logger.info(`registry running on port ${attribs.port}`);
     });
 
-    const gateway = new Gateway({
+    const registry = new Registry({
       port: attribs.port,
-      db,
-      proxyStore,
       server,
+      store,
     });
 
     process.on("SIGINT", async () => {
-      logger.info("received SIGINT, cleaning up proxy servers...");
-      await gateway.stop();
+      logger.info("received SIGINT, shutting down registry...");
+      await registry.stop();
       process.exit(0);
     });
 
-    return gateway;
+    return registry;
   }
 
   async stop() {
-    await this.proxyStore.closeAll();
+    await this.store.close();
     await new Promise<void>((resolve) => {
       this.server.close(() => resolve());
     });

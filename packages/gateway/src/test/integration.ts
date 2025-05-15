@@ -1,6 +1,8 @@
-import { startService, Gateway } from "../server";
-import { createGatewayClient } from "../trpc/client";
+import { Gateway } from "../server";
+import { createGatewayClient } from "../client";
 import path from "node:path";
+
+const TEST_PORT = 4673;
 
 export class IntegrationTestHarness {
     public readonly gateway: Gateway;
@@ -19,8 +21,8 @@ export class IntegrationTestHarness {
     }
 
     public static async start() {
-        const gateway = await startService({
-            port: 4673,
+        const gateway = await Gateway.start({
+            port: TEST_PORT,
             databaseFilePath: path.join(__dirname, "db.test.json"),
         });
 
