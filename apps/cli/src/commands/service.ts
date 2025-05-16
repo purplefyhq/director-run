@@ -1,4 +1,4 @@
-import { Gateway } from "@director.run/gateway/server";
+import { Gateway } from "@director.run/gateway/gateway";
 import { actionWithErrorHandler } from "@director.run/utilities/cli";
 import { Command } from "commander";
 import { env } from "../config";
@@ -28,16 +28,8 @@ export function createServiceCommands() {
         await Gateway.start({
           port: env.GATEWAY_PORT,
           databaseFilePath: env.DB_FILE_PATH,
+          registryURL: env.REGISTRY_URL,
         });
-      }),
-    );
-
-  command
-    .command("config")
-    .description("Print configuration variables")
-    .action(
-      actionWithErrorHandler(() => {
-        console.log(`config:`, env);
       }),
     );
 
