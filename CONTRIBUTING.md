@@ -1,37 +1,79 @@
 
-## Contributing
+# Contributing
 
-We welcome help and contribuitions 
+Hello! We welcome any and all contributions and we'd be more than happy to help you get started with the codebase. 
 
-This project is under active development and the code will likely change pretty significantly. We'll update this message once that's complete!
+**Note: This project is under active development and the code will likely change pretty significantly. We'll update this message once that's complete!**
 
+## Prerequisites
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) 
 - [Bun](https://bun.sh/) 
+- [Docker](https://docker.com)
 
-### Installation
-```bash
-bun install
+## Development workflow
+
+### Setup Environment
+
+```bash 
+# clone the repo
+$ git clone https://github.com/theworkingcompany/director
+$ cd director
+
+# Install dependencies
+$ bun install
+
+# Setup registry test and development
+$ cd apps/registy
+$ docker-compose up -d # spin up postgres (ignore if you have it running locally)
+$ createdb -h localhost -p 5432 -U postgres director-registry-test # create test db
+  password: travel-china-spend-nothing
+$ createdb -h localhost -p 5432 -U postgres director-registry-dev # create development db
+  password: travel-china-spend-nothing
+$ bun run db:push # push schema to development db
+$ NODE_ENV=test bun run db:push # push schema to test db
+$ bun run cli db:seed # populate the development database with server entries
+
+# Setup the director gateway
+$ cd apps/cli
+
+# seed the gateway with test config (if the gateway is running, 
+# it'll need to be restarted for changes to take effect)
+$ bun run cli debug seed 
 ```
 
-### Development workflow
+### Running in Development 
 
 ```bash
-# run backend, watch for changes
-bun run start:dev
+# start the registry
+$ cd apps/registry
+$ docker-compose up -d # make sure postgres is running
+$ bun run cli server:start # start the registry server
 
-# tests
-bun run test
-bun run lint 
-bun run typecheck
+# start the director gateway
+$ cd apps/cli
+$ bun run cli service start
+
+# list the proxies and install one to claude
+$ bun run cli ls # list all proxies
+$ bun run cli claude install claude-proxy # install sample proxy to claude and restart it
+
+# now you should see a list of mcp servers in claude
+# try this prompt: "give me the front page of hackernews"
+```
+
+### Running Tests
+
+```bash
+# from project root
+$ bun run lint 
+$ bun run typecheck
+$ bun run test
 
 # Automatically fix lint + prettier issues
-bun run format
+$ bun run format
 ```
 
-### Writing code changes
+## Writing code changes
 
 When you make code changes, please remember 
 
@@ -39,23 +81,19 @@ When you make code changes, please remember
 2. **Document behaviour.** If your change affects user‑facing behaviour, update the README or relevant documentation.
 3. **Keep commits atomic.** Each commit should compile and the tests should pass. This makes reviews and potential rollbacks easier.
 
-### Opening a pull request
+## Opening a pull request
 
 - Fill in the PR template (or include similar information) – **What? Why? How?**
 - Run **all** checks locally (`bun run test && bun run lint && bun run check-types`). CI failures that could have been caught locally slow down the process.
 - Make sure your branch is up‑to‑date with `main` and that you have resolved merge conflicts.
 - Mark the PR as **Ready for review** only when you believe it is in a merge‑able state.
 
-### Releasing `director`
+## Releasing `director`
+
+Release workflow is handled by a github action that is triggered when a version tag is created
 
 ```bash
-# Step 1: Make changes on a branch, bump the version
-... # make changes
-bun run desktop:version bump
-... # commit & push version changes
-# Step 2: Merge the branch in github ...
-# Step 3: Release
-git checkout main
-git pull
-bun run desktop:release
+$ version=$(bun run desktop:version print) 
+$ git tag -a "v${version}" -m "Release v${version}" 
+$ git push origin "v${version}"
 ```
