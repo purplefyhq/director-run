@@ -5,9 +5,13 @@ import { Command } from "commander";
 import { gatewayClient } from "../client";
 import { env } from "../config";
 
-export function registerClaudeCommands(program: Command) {
-  program
-    .command("claude:ls")
+export function createClaudeCommand() {
+  const command = new Command("claude").description(
+    "Manage claude MCP servers",
+  );
+
+  command
+    .command("ls")
     .description("List claude MCP servers")
     .action(
       actionWithErrorHandler(async (proxyId: string) => {
@@ -16,8 +20,8 @@ export function registerClaudeCommands(program: Command) {
       }),
     );
 
-  program
-    .command("claude:install <proxyId>")
+  command
+    .command("install <proxyId>")
     .description("Install a proxy on a client app")
     .action(
       actionWithErrorHandler(async (proxyId: string) => {
@@ -30,8 +34,8 @@ export function registerClaudeCommands(program: Command) {
       }),
     );
 
-  program
-    .command("claude:uninstall <proxyId>")
+  command
+    .command("uninstall <proxyId>")
     .description("Uninstall an proxy from a client app")
     .action(
       actionWithErrorHandler(async (proxyId: string) => {
@@ -43,8 +47,8 @@ export function registerClaudeCommands(program: Command) {
     );
 
   if (isDevelopment()) {
-    program
-      .command("claude:restart")
+    command
+      .command("restart")
       .description("Restart the claude MCP server")
       .action(
         actionWithErrorHandler(async () => {
@@ -53,8 +57,8 @@ export function registerClaudeCommands(program: Command) {
         }),
       );
 
-    program
-      .command("claude:purge")
+    command
+      .command("purge")
       .description("Purge all claude MCP servers")
       .action(
         actionWithErrorHandler(async () => {
@@ -63,4 +67,6 @@ export function registerClaudeCommands(program: Command) {
         }),
       );
   }
+
+  return command;
 }

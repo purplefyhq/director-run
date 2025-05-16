@@ -6,7 +6,7 @@ import { Command } from "commander";
 import { gatewayClient } from "../client";
 import { env } from "../config";
 
-export function registerProxyCommands(program: Command) {
+export function registerCoreCommands(program: Command) {
   program
     .command("ls")
     .description("List all proxies")
@@ -90,33 +90,6 @@ export function registerProxyCommands(program: Command) {
         });
 
         console.log(`proxy ${proxyId} deleted`);
-      }),
-    );
-
-  program
-    .command("server:add <proxyId> <entryName>")
-    .description("Add a server from the registry to a proxy.")
-    .action(
-      actionWithErrorHandler(async (proxyId: string, entryName: string) => {
-        const proxy = await gatewayClient.store.addServerFromRegistry.mutate({
-          proxyId,
-          entryName,
-          registryUrl: env.REGISTRY_URL,
-        });
-        console.log(`Registry entry ${entryName} added to ${proxy.id}`);
-      }),
-    );
-
-  program
-    .command("server:remove <proxyId> <serverName>")
-    .description("Remove a server from a proxy")
-    .action(
-      actionWithErrorHandler(async (proxyId: string, serverName: string) => {
-        const proxy = await gatewayClient.store.removeServer.mutate({
-          proxyId,
-          serverName,
-        });
-        console.log(`Server ${serverName} added to ${proxy.id}`);
       }),
     );
 
