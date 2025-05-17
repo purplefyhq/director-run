@@ -2,8 +2,9 @@
 
 import { Command } from "commander";
 import packageJson from "../package.json";
-import { registerDbCommands } from "../src/commands/db";
+import { registerEntriesCommands } from "../src/commands/entries";
 import { registerServerCommands } from "../src/commands/server";
+import { createStore } from "../src/db/store";
 
 const program = new Command();
 
@@ -12,7 +13,17 @@ program
   .description("Registry CLI")
   .version(packageJson.version);
 
-registerDbCommands(program);
-registerServerCommands(program);
+const store = createStore();
+
+program.addCommand(registerEntriesCommands(store));
+program.addCommand(registerServerCommands());
+
+program.hook("postAction", async () => {
+  await store.close();
+});
+
+process.on("exit", async () => {
+  await store.close();
+});
 
 program.parse();

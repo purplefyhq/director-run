@@ -20,6 +20,7 @@ export const entriesTable = pgTable("entries", {
   description: text("description").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   isOfficial: boolean("is_official").default(false), // Is it a servers that is officially supported by the companies or makers of the service
+  isEnriched: boolean("is_enriched").default(false), // Has the entry been enriched?
 
   // **
   // ** Transport
@@ -40,7 +41,7 @@ export const entriesTable = pgTable("entries", {
   // **
   // ** Metadata
   // **
-  homepage: varchar("homepage", { length: 255 }),
+  homepage: varchar("homepage", { length: 255 }).notNull(),
   source_registry: jsonb("source_registry").$type<{
     name: string;
     entryId: string;
@@ -68,6 +69,7 @@ export const entriesTable = pgTable("entries", {
       name: string;
       description: string;
       required?: boolean;
+      scope: "env" | "args";
     }>
   >(),
   readme: text("readme"),

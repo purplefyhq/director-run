@@ -1,4 +1,5 @@
 import { count, eq, inArray } from "drizzle-orm";
+import { isGithubRepo } from "../enrichment/github";
 import { DatabaseConnection } from "./index";
 import { type EntryCreateParams, entriesTable } from "./schema";
 
@@ -29,6 +30,31 @@ export class EntryStore {
 
   public async addEntry(entry: EntryCreateParams) {
     await this.db.db.insert(entriesTable).values(entry);
+  }
+
+  public async deleteEntry(id: string) {
+    await this.db.db.delete(entriesTable).where(eq(entriesTable.id, id));
+  }
+
+  public async updateEntry(id: string, entry: Partial<EntryCreateParams>) {
+    await this.db.db
+      .update(entriesTable)
+      .set(entry)
+      .where(eq(entriesTable.id, id));
+  }
+
+  public async getStatistics() {
+    const entries = await this.getAllEntries();
+    const enriched = entries.filter((e) => e.isEnriched);
+    const notEnriched = entries.filter((e) => !e.isEnriched);
+    const notGithub = entries.filter((e) => !isGithubRepo(e.homepage));
+
+    return {
+      total: entries.length,
+      enriched: enriched.length,
+      notEnriched: notEnriched.length,
+      notGithub: notGithub.length,
+    };
   }
 
   public async paginateEntries(params: {
