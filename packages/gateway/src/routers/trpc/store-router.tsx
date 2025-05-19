@@ -1,4 +1,3 @@
-import { AppError, ErrorCode } from "@director.run/utilities/error";
 import { t } from "@director.run/utilities/trpc";
 import { z } from "zod";
 import { ProxyTargetSchema } from "../../db/schema";
@@ -15,34 +14,21 @@ const ProxyUpdateSchema = ProxyCreateSchema.partial();
 
 export function createProxyStoreRouter({
   proxyStore,
-  registryURL,
-}: { proxyStore: ProxyServerStore; registryURL: string }) {
+}: { proxyStore: ProxyServerStore }) {
   return t.router({
     getAll: t.procedure.query(async () => {
-      try {
-        return (await proxyStore.getAll()).map((proxy) => ({
-          ...proxy.toPlainObject(),
-          path: getPathForProxy(proxy.id),
-        }));
-      } catch (error) {
-        console.error(error);
-        return [];
-      }
+      return (await proxyStore.getAll()).map((proxy) => ({
+        ...proxy.toPlainObject(),
+        path: getPathForProxy(proxy.id),
+      }));
     }),
     get: t.procedure
       .input(z.object({ proxyId: z.string() }))
       .query(({ input }) => {
-        try {
-          return {
-            ...proxyStore.get(input.proxyId).toPlainObject(),
-            path: getPathForProxy(input.proxyId),
-          };
-        } catch (e) {
-          if (e instanceof AppError && e.code === ErrorCode.NOT_FOUND) {
-            return undefined;
-          }
-          throw e;
-        }
+        return {
+          ...proxyStore.get(input.proxyId).toPlainObject(),
+          path: getPathForProxy(input.proxyId),
+        };
       }),
     create: t.procedure.input(ProxyCreateSchema).mutation(async ({ input }) => {
       return (
@@ -98,20 +84,6 @@ export function createProxyStoreRouter({
       )
       .mutation(({ input }) => {
         return proxyStore.addServer(input.proxyId, input.server);
-      }),
-    addServerFromRegistry: t.procedure
-      .input(
-        z.object({
-          proxyId: z.string(),
-          entryName: z.string(),
-        }),
-      )
-      .mutation(({ input }) => {
-        return proxyStore.addServerFromRegistry(
-          input.proxyId,
-          input.entryName,
-          registryURL,
-        );
       }),
     removeServer: t.procedure
       .input(
