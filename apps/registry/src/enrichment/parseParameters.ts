@@ -1,47 +1,43 @@
-import { type EntryGetParams } from "../db/schema";
+import { type EntryGetParams, type EntryParameter } from "../db/schema";
 
-type Parameter = {
-  name: string;
-  description: string;
-  required: boolean;
-  scope: "env" | "args";
-};
-
-export function parseParameters(entry: EntryGetParams) {
-  const parameters: Array<Parameter> = [];
+export function parseParameters(entry: EntryGetParams): Array<EntryParameter> {
+  const parameters: Array<EntryParameter> = [];
   if (entry.transport.type === "stdio") {
     parameters.push(...parseArgumentParameters(entry.transport.args));
-    // TODO: parse env parameters
     parameters.push(...parseEnvParameters(entry.transport.env ?? {}));
   }
   return parameters;
 }
 
-function parseArgumentParameters(args: string[]) {
-  const parameters: Array<Parameter> = [];
+function parseArgumentParameters(args: string[]): Array<EntryParameter> {
+  const parameters: Array<EntryParameter> = [];
 
   for (const arg of args) {
     parameters.push(
       ...extractUppercaseWithUnderscores(arg).map((name) => ({
         name,
         description: "",
-        required: true,
         scope: "args" as const,
+        type: "string" as const,
+        required: true as const,
       })),
     );
   }
   return parameters;
 }
 
-function parseEnvParameters(env: Record<string, string>) {
-  const parameters: Array<Parameter> = [];
+function parseEnvParameters(
+  env: Record<string, string>,
+): Array<EntryParameter> {
+  const parameters: Array<EntryParameter> = [];
 
   for (const [key, value] of Object.entries(env)) {
     parameters.push({
       name: key,
       description: value,
-      required: true,
       scope: "env" as const,
+      type: "string" as const,
+      required: true,
     });
   }
   return parameters;

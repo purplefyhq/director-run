@@ -64,16 +64,18 @@ export const entriesTable = pgTable("entries", {
       }>;
     }>
   >(),
-  parameters: jsonb("parameters").default([]).$type<
-    Array<{
-      name: string;
-      description: string;
-      required?: boolean;
-      scope: "env" | "args";
-    }>
-  >(),
+  parameters: jsonb("parameters").default([]).$type<Array<EntryParameter>>(),
   readme: text("readme"),
 });
 
 export type EntryCreateParams = InferInsertModel<typeof entriesTable>;
 export type EntryGetParams = InferSelectModel<typeof entriesTable>;
+
+// Only a very specific type of parameter is supported for now
+export type EntryParameter = {
+  name: string;
+  description: string;
+  scope: "env" | "args";
+  required: true;
+  type: "string";
+};
