@@ -1,4 +1,5 @@
 import { Server } from "http";
+import { isProduction } from "@director.run/utilities/env";
 import { getLogger } from "@director.run/utilities/logger";
 import { errorRequestHandler } from "@director.run/utilities/middleware";
 import { notFoundHandler } from "@director.run/utilities/middleware";
@@ -39,6 +40,11 @@ export class Registry {
     app.use(cors());
     app.use(express.json());
     app.use("/trpc", createTRPCExpressMiddleware({ store }));
+
+    if (isProduction()) {
+      app.get("/", (req, res) => res.redirect("https://director.run"));
+    }
+
     app.get("*", notFoundHandler);
     app.post("*", notFoundHandler);
     app.use(errorRequestHandler);
