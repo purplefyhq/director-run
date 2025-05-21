@@ -5,13 +5,13 @@ import { serveOverSSE } from "@director.run/mcp/transport";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import {
   makeFooBarServerStdioConfig,
-  makeSSETargetConfig,
+  makeHTTPTargetConfig,
 } from "../test/fixtures";
 import { IntegrationTestHarness } from "../test/integration";
 
 const PROXY_TARGET_PORT = 4521;
 
-const echoServerSSEConfig = makeSSETargetConfig({
+const echoServerSSEConfig = makeHTTPTargetConfig({
   name: "echo",
   url: `http://localhost:${PROXY_TARGET_PORT}/sse`,
 });
@@ -49,7 +49,7 @@ describe("Streamable Router", () => {
       servers: [makeFooBarServerStdioConfig(), echoServerSSEConfig],
     });
 
-    const client = await SimpleClient.createAndConnectToStreamable(
+    const client = await SimpleClient.createAndConnectToHTTP(
       `http://localhost:${harness.gateway.port}/${testProxy.id}/mcp`,
     );
 
@@ -79,7 +79,7 @@ describe("Streamable Router", () => {
       servers: [makeFooBarServerStdioConfig()],
     });
 
-    const client = await SimpleClient.createAndConnectToStreamable(
+    const client = await SimpleClient.createAndConnectToHTTP(
       `http://localhost:${harness.gateway.port}/${testProxy.id}/mcp`,
     );
 
@@ -93,7 +93,7 @@ describe("Streamable Router", () => {
       server: echoServerSSEConfig,
     });
 
-    const client2 = await SimpleClient.createAndConnectToStreamable(
+    const client2 = await SimpleClient.createAndConnectToHTTP(
       `http://localhost:${harness.gateway.port}/${testProxy.id}/mcp`,
     );
 
@@ -109,7 +109,7 @@ describe("Streamable Router", () => {
       servers: [echoServerSSEConfig, makeFooBarServerStdioConfig()],
     });
 
-    const client = await SimpleClient.createAndConnectToStreamable(
+    const client = await SimpleClient.createAndConnectToHTTP(
       `http://localhost:${harness.gateway.port}/${testProxy.id}/mcp`,
     );
     const toolsResult = await client.listTools();
@@ -122,7 +122,7 @@ describe("Streamable Router", () => {
       serverName: "echo",
     });
 
-    const client2 = await SimpleClient.createAndConnectToStreamable(
+    const client2 = await SimpleClient.createAndConnectToHTTP(
       `http://localhost:${harness.gateway.port}/${testProxy.id}/mcp`,
     );
     const toolsResult2 = await client2.listTools();
