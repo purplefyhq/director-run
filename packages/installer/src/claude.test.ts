@@ -1,7 +1,15 @@
+vi.mock("@director.run/utilities/os", () => ({
+  isAppInstalled: vi.fn(() => true),
+  isFilePresent: vi.fn(() => true),
+  App: {
+    CLAUDE: "Claude",
+  },
+}));
+
 import fs from "node:fs/promises";
 import path from "node:path";
 import { writeJSONFile } from "@director.run/utilities/json";
-import { afterAll, beforeEach, describe, expect, test } from "vitest";
+import { afterAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { CLAUDE_CONFIG_KEY_PREFIX, ClaudeInstaller } from "./claude";
 import {
   createClaudeConfig,
@@ -19,6 +27,15 @@ describe("claude installer", () => {
 
   afterAll(async () => {
     await fs.unlink(configFilePath);
+  });
+
+  test("should correctly check if a server is installed", async () => {
+    const entry = createClaudeServerEntry();
+    expect(installer.isInstalled(entry.name)).toBe(false);
+    await installer.install(entry);
+    expect(installer.isInstalled(entry.name)).toBe(true);
+    await installer.uninstall(entry.name);
+    expect(installer.isInstalled(entry.name)).toBe(false);
   });
 
   test("should be able to install a server", async () => {

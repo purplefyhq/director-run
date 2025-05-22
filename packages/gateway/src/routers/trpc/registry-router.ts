@@ -1,3 +1,4 @@
+import {} from "@director.run/installer/claude";
 import type { ProxyTransport } from "@director.run/mcp/types";
 import { createRegistryClient } from "@director.run/registry/client";
 import type { EntryParameter } from "@director.run/registry/db/schema";
@@ -7,9 +8,9 @@ import {
 } from "@director.run/utilities/schema";
 import { t } from "@director.run/utilities/trpc";
 import { z } from "zod";
+import { REGISTRY_ENTRY_NAME_PREFIX } from "../../config";
+import { restartConnectedClients } from "../../helpers";
 import type { ProxyServerStore } from "../../proxy-server-store";
-
-const REGISTRY_ENTRY_NAME_PREFIX = "registry__";
 
 const parameterToZodSchema = (parameter: EntryParameter) => {
   if (parameter.type === "string") {
@@ -90,12 +91,14 @@ export function createRegistryRouter({
           };
         }
 
-        return (
-          await proxyStore.addServer(input.proxyId, {
-            name: `${REGISTRY_ENTRY_NAME_PREFIX}${entry.name}`,
-            transport,
-          })
-        ).toPlainObject();
+        const newProxy = await proxyStore.addServer(input.proxyId, {
+          name: `${REGISTRY_ENTRY_NAME_PREFIX}${entry.name}`,
+          transport,
+        });
+
+        await restartConnectedClients(newProxy);
+
+        return newProxy.toPlainObject();
       }),
   });
 }

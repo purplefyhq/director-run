@@ -1,11 +1,19 @@
 import os from "node:os";
 import path from "node:path";
 import { isTest } from "@director.run/utilities/env";
+import { AppError, ErrorCode } from "@director.run/utilities/error";
 import { readJSONFile, writeJSONFile } from "@director.run/utilities/json";
 import { getLogger } from "@director.run/utilities/logger";
-import { App, restartApp } from "@director.run/utilities/os";
+import {
+  App,
+  isAppInstalled,
+  isFilePresent,
+  openFileInCode,
+  restartApp,
+} from "@director.run/utilities/os";
 import { z } from "zod";
 
+export const CLAUDE_COMMAND = "claude";
 export const CLAUDE_CONFIG_PATH = path.join(
   os.homedir(),
   "Library/Application Support/Claude/claude_desktop_config.json",
@@ -25,6 +33,18 @@ export class ClaudeInstaller {
 
   public static async create(configPath: string = CLAUDE_CONFIG_PATH) {
     logger.info(`reading config from ${configPath}`);
+    if (!isClaudeInstalled()) {
+      throw new AppError(
+        ErrorCode.NOT_FOUND,
+        `Claude desktop app is not installed command: ${CLAUDE_COMMAND}`,
+      );
+    }
+    if (!isClaudeConfigPresent()) {
+      throw new AppError(
+        ErrorCode.NOT_FOUND,
+        `Claude config file not found at ${configPath}`,
+      );
+    }
     const config = await readJSONFile<ClaudeConfig>(configPath);
     return new ClaudeInstaller({
       configPath,
@@ -32,7 +52,17 @@ export class ClaudeInstaller {
     });
   }
 
+  public isInstalled(name: string) {
+    return this.config.mcpServers[createKey(name)] !== undefined;
+  }
+
   public async uninstall(name: string) {
+    if (!this.isInstalled(name)) {
+      throw new AppError(
+        ErrorCode.NOT_FOUND,
+        `server '${name}' is not installed`,
+      );
+    }
     logger.info(`uninstalling ${name}`);
     const newConfig = { ...this.config };
     delete newConfig.mcpServers[createKey(name)];
@@ -40,6 +70,12 @@ export class ClaudeInstaller {
   }
 
   public async install(entry: ClaudeServerEntry) {
+    if (this.isInstalled(entry.name)) {
+      throw new AppError(
+        ErrorCode.BAD_REQUEST,
+        `server '${entry.name}' is already installed`,
+      );
+    }
     logger.info(`installing ${entry.name}`);
     const newConfig = { ...this.config };
     newConfig.mcpServers[createKey(entry.name)] = entry.transport;
@@ -59,6 +95,11 @@ export class ClaudeInstaller {
       name,
       transport,
     }));
+  }
+
+  public async openConfig() {
+    logger.info("opening claude config");
+    await openFileInCode(this.configPath);
   }
 
   public async restartClaude() {
@@ -98,3 +139,11 @@ export type ClaudeServerEntry = {
   name: string;
   transport: ClaudeMCPServer;
 };
+
+export function isClaudeInstalled(): boolean {
+  return isAppInstalled(App.CLAUDE);
+}
+
+export function isClaudeConfigPresent(): boolean {
+  return isFilePresent(CLAUDE_CONFIG_PATH);
+}

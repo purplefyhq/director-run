@@ -111,7 +111,22 @@ export class ProxyServerStore {
     server: ProxyTargetAttributes,
   ): Promise<ProxyServer> {
     const proxy = this.get(proxyId);
-    // TODO: Implement a more efficient update mechanism without recreating the proxy server
+    // TODO:
+    //   - Do not recreate the proxy server, just update the server
+    //   - After updating, call proxy.sendToolListChanged(); (also add necessary capability to server definition)
+    //   - At the moment (22/05/2025), neither Claude nor Cursor seem to support this so leaving it like this for now
+
+    if (
+      proxy.attributes.servers.some(
+        (s) => s.name.toLocaleLowerCase() === server.name.toLocaleLowerCase(),
+      )
+    ) {
+      throw new AppError(
+        ErrorCode.BAD_REQUEST,
+        `Server '${server.name}' already exists in proxy '${proxyId}'`,
+      );
+    }
+
     const updatedProxy = await this.update(proxyId, {
       servers: [...proxy.attributes.servers, server],
     });
@@ -123,7 +138,18 @@ export class ProxyServerStore {
     serverName: string,
   ): Promise<ProxyServer> {
     const proxy = this.get(proxyId);
-    // TODO: don't re-create the proxy server, just update the servers
+    // TODO: don't re-create the proxy server, just update the servers - same as addServer
+    if (
+      !proxy.attributes.servers.some(
+        (s) => s.name.toLowerCase() === serverName.toLowerCase(),
+      )
+    ) {
+      throw new AppError(
+        ErrorCode.BAD_REQUEST,
+        `Server '${serverName}' not found in proxy '${proxyId}'`,
+      );
+    }
+
     const updatedProxy = await this.update(proxyId, {
       servers: proxy.attributes.servers.filter(
         (s) => s.name.toLowerCase() !== serverName.toLowerCase(),

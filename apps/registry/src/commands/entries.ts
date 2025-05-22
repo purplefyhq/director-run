@@ -4,7 +4,7 @@ import { type Store } from "../db/store";
 import { enrichEntries } from "../enrichment/enrich";
 import { prettyPrint } from "../helpers/pretty-print";
 import { fetchRaycastRegistry } from "../importers/raycast";
-
+import { getSeedEntries } from "../importers/seed";
 export function registerEntriesCommands(store: Store) {
   const command = new Command("entries");
 
@@ -24,6 +24,7 @@ export function registerEntriesCommands(store: Store) {
       actionWithErrorHandler(async () => {
         await store.entries.deleteAllEntries();
         await store.entries.addEntries(await fetchRaycastRegistry());
+        await store.entries.addEntries(getSeedEntries());
       }),
     );
 

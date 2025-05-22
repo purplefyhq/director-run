@@ -17,10 +17,14 @@ export function createRegistryCommands() {
           pageIndex: 0,
           pageSize: 100,
         });
-        const table = makeTable(["Name", "Description"]);
+        const table = makeTable(["Name", "Homepage", "Description"]);
         table.push(
           ...items.entries.map((item) => {
-            return [item.name, truncateDescription(item.description)];
+            return [
+              item.name,
+              item.homepage,
+              truncateDescription(item.description),
+            ];
           }),
         );
         console.log(table.toString());
@@ -71,7 +75,7 @@ export function createRegistryCommands() {
           proxyId,
           serverName,
         });
-        console.log(`Server ${serverName} added to ${proxy.id}`);
+        console.log(`Server ${serverName} removed from ${proxy.id}`);
       }),
     );
 
