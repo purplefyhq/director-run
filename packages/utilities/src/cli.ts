@@ -1,8 +1,9 @@
 import { TRPCClientError } from "@trpc/client";
 import chalk from "chalk";
 import Table from "cli-table3";
-import { Option } from "commander";
+import { type CommandOptions, Option } from "commander";
 import { Command, type HelpContext } from "commander";
+import { isDevelopment } from "./env";
 import { getLogger } from "./logger";
 
 const logger = getLogger("cli");
@@ -44,53 +45,76 @@ export function makeTable(head: string[]) {
   });
 }
 
+declare module "commander" {
+  interface Command {
+    _debug?: boolean; // is it a debug command?
+    _helpOption?: Option;
+  }
+}
+
+const leftPadding = " ".repeat(2);
+
 export class DirectorCommand extends Command {
+  public debug = true;
+  public examples = "";
+
   constructor(name?: string) {
     super(name);
     this.helpCommand(false);
   }
 
+  debugCommand(nameAndArgs: string, opts?: CommandOptions) {
+    if (isDevelopment()) {
+      const command = super.command(nameAndArgs, opts);
+      command._debug = true;
+      return command;
+    } else {
+      return new Command(nameAndArgs);
+    }
+  }
+
   helpInformation(context?: HelpContext): string {
-    // return super.helpInformation(context);
     return makeHelpText(this);
+  }
+
+  addExamples(examples: string) {
+    this.examples = examples;
   }
 }
 
-function makeHelpText(program: Command) {
-  const required = (t: string) => ["<", t, ">"].join("");
-  const optional = (t: string) => ["[", t, "]"].join("");
-  const concat = (a: (string | undefined)[]) => a.filter(Boolean).join(" ");
-
+function makeHelpText(program: DirectorCommand) {
   const lines = [];
 
-  lines.push(program.description());
+  if (isDevelopment()) {
+    lines.push(
+      chalk.yellow(
+        "🚧 running in development mode, debug commands in yellow 🚧",
+      ),
+    );
+    lines.push("");
+  }
+
+  lines.push(program.description().trim());
   lines.push("");
   lines.push(chalk.white.bold(`USAGE`));
-  lines.push(`  director ${required("command")} [subcommand] [flags]`);
-  lines.push("");
-  lines.push(chalk.white.bold(`CORE COMMANDS`));
-
-  const makeLine = (cmd: Command) => {
-    const args = cmd.registeredArguments
-      .map((arg) =>
-        arg.required ? required(arg.name()) : optional(arg.name()),
-      )
-      .filter((arg) => arg !== "")
-      .join(" ");
-
-    const usage = concat([
+  lines.push(
+    leftPadding +
       concat([
-        cmd.parent && cmd.parent.parent ? cmd.parent?.name() : undefined,
-        cmd.name(),
+        program.parent ? program.parent.name() : "",
+        program.name(),
+        required("command"),
+        "[subcommand]",
+        "[flags]",
       ]),
-      args,
-      cmd.options.length ? optional("options") : "",
-    ]);
+  );
+  lines.push("");
 
-    const padding = " ".repeat(Math.max(0, 45 - usage.length));
-
-    return `  ${usage}${padding}${cmd.description() || chalk.red("TODO")}`;
-  };
+  if (program.parent) {
+    lines.push(makeHeader(`${program.name()} commands`));
+  } else {
+    // only root commands have core commands
+    lines.push(makeHeader(`core commands`));
+  }
 
   program.commands
     .toSorted(
@@ -99,7 +123,7 @@ function makeHelpText(program: Command) {
     .forEach((cmd) => {
       if (cmd.commands.length) {
         lines.push("");
-        lines.push(chalk.white.bold(cmd.name().toUpperCase()));
+        lines.push(makeHeader(cmd.name()));
 
         cmd.commands.forEach((subcommand) => {
           lines.push(makeLine(subcommand));
@@ -110,16 +134,29 @@ function makeHelpText(program: Command) {
     });
 
   lines.push("");
-  lines.push(chalk.white.bold(`FLAGS`));
-  lines.push(`  --help      Show help for command`);
-  lines.push(`  --version   Show director version`);
-  lines.push("");
+  const opts: Option[] = [program._helpOption, ...program.options].filter(
+    (opt) => opt !== undefined,
+  );
 
-  lines.push(chalk.white.bold(`EXAMPLES`));
-  lines.push(`  $ director create my-proxy`);
-  lines.push(`  $ director registry install my-proxy iterm`);
-  lines.push(`  $ director claude install my-proxy`);
-  lines.push("");
+  if (opts.length) {
+    lines.push(makeHeader(`flags`));
+    opts.forEach((opt) => {
+      lines.push(
+        concat([
+          leftPadding,
+          opt.flags,
+          alignRight(opt.description, opt.flags.length),
+        ]),
+      );
+    });
+    lines.push("");
+  }
+
+  if (program.examples) {
+    lines.push(makeHeader(`examples`));
+    lines.push("  " + program.examples.trim());
+    lines.push("");
+  }
   lines.push("");
 
   return lines.join("\n");
@@ -136,3 +173,40 @@ export function printDirectorAscii(): void {
                                          
                                          `);
 }
+
+const makeHeader = (text: string) => {
+  return chalk.white.bold(text.toLocaleUpperCase());
+};
+
+const makeLine = (cmd: Command) => {
+  const args = cmd.registeredArguments
+    .map((arg) => (arg.required ? required(arg.name()) : optional(arg.name())))
+    .filter((arg) => arg !== "")
+    .join(" ");
+
+  const leftSide = concat([
+    concat([
+      cmd.parent && cmd.parent.parent ? cmd.parent?.name() : undefined,
+      cmd.name(),
+    ]),
+    args,
+    cmd.options.length ? optional("options") : "",
+  ]);
+
+  const rightSide = cmd.description() || chalk.red("TODO");
+
+  const text = concat([
+    leftPadding,
+    leftSide,
+    alignRight(rightSide, leftSide.length),
+  ]);
+  return cmd._debug ? chalk.yellow(text) : text;
+};
+
+const alignRight = (t: string, xIndex: number) => {
+  return " ".repeat(Math.max(0, 45 - xIndex)) + t;
+};
+
+const required = (t: string) => ["<", t, ">"].join("");
+const optional = (t: string) => ["[", t, "]"].join("");
+const concat = (a: (string | undefined)[]) => a.filter(Boolean).join(" ");

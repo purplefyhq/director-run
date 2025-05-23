@@ -3,13 +3,14 @@
 import "../src/config";
 
 import { DirectorCommand } from "@director.run/utilities/cli";
-import { isDevelopment } from "@director.run/utilities/env";
 import packageJson from "../package.json";
 import { createClaudeCommand } from "../src/commands/claude";
 import { registerCoreCommands } from "../src/commands/core";
 import { createCursorCommands } from "../src/commands/cursor";
-import { createDebugCommands } from "../src/commands/debug";
 import { createRegistryCommands } from "../src/commands/registry";
+
+// add this to prevent the program from exiting (useful for working on help text in live reload)
+// process.exit = (code?: number) => {};
 
 const program = new DirectorCommand();
 
@@ -24,8 +25,10 @@ program.addCommand(createClaudeCommand());
 program.addCommand(createCursorCommands());
 program.addCommand(createRegistryCommands());
 
-if (isDevelopment()) {
-  program.addCommand(createDebugCommands());
-}
+program.addExamples(`
+  $ director create my-proxy
+  $ director registry install my-proxy iterm
+  $ director claude install my-proxy
+`);
 
 program.parse();

@@ -1,11 +1,12 @@
-import { makeTable } from "@director.run/utilities/cli";
+import { DirectorCommand, makeTable } from "@director.run/utilities/cli";
 import { actionWithErrorHandler } from "@director.run/utilities/cli";
 import chalk from "chalk";
-import { Command } from "commander";
 import { gatewayClient, registryClient } from "../client";
 
 export function createRegistryCommands() {
-  const command = new Command("registry");
+  const command = new DirectorCommand("registry").description(
+    "MCP server registry commands",
+  );
 
   command
     .command("ls")
@@ -17,14 +18,10 @@ export function createRegistryCommands() {
           pageIndex: 0,
           pageSize: 100,
         });
-        const table = makeTable(["Name", "Homepage", "Description"]);
+        const table = makeTable(["Name", "Description"]);
         table.push(
           ...items.entries.map((item) => {
-            return [
-              item.name,
-              item.homepage,
-              truncateDescription(item.description),
-            ];
+            return [item.name, truncateDescription(item.description)];
           }),
         );
         console.log(table.toString());
@@ -76,6 +73,42 @@ export function createRegistryCommands() {
           serverName,
         });
         console.log(`Server ${serverName} removed from ${proxy.id}`);
+      }),
+    );
+
+  command
+    .debugCommand("purge")
+    .description("Delete all entries from the database")
+    .action(
+      actionWithErrorHandler(async () => {
+        await registryClient.entries.purge.mutate({});
+      }),
+    );
+
+  command
+    .debugCommand("import")
+    .description("Seed the database with entries from awesome-mcp-servers")
+    .action(
+      actionWithErrorHandler(async () => {
+        await registryClient.entries.import.mutate({});
+      }),
+    );
+
+  command
+    .debugCommand("enrich")
+    .description("enrich entries")
+    .action(
+      actionWithErrorHandler(async () => {
+        await registryClient.entries.enrich.mutate({});
+      }),
+    );
+
+  command
+    .debugCommand("stats")
+    .description("get counts")
+    .action(
+      actionWithErrorHandler(async () => {
+        console.log(await registryClient.entries.stats.query({}));
       }),
     );
 
