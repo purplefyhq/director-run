@@ -1,6 +1,7 @@
 "use client";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toast";
 import { trpc } from "@/trpc/client";
 import { useRouter } from "next/navigation";
 import { ReactNode, useState } from "react";
@@ -22,6 +23,10 @@ export function ProxyDeleteConfirmation({
   const mutation = trpc.store.delete.useMutation({
     onSuccess: async () => {
       await utils.store.getAll.invalidate();
+      toast({
+        title: "Proxy deleted",
+        description: "This proxy was successfully deleted.",
+      });
       setIsOpen(false);
       router.push("/");
     },
