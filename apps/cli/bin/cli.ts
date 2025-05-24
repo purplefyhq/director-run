@@ -2,7 +2,7 @@
 // This needs to run before anything else so that the environment variables are set before the logger is initialized
 import "../src/config";
 
-import { DirectorCommand } from "@director.run/utilities/cli";
+import { DirectorCommand } from "@director.run/utilities/cli/director-command";
 import packageJson from "../package.json";
 import { createClaudeCommand } from "../src/commands/claude";
 import { registerCoreCommands } from "../src/commands/core";
@@ -20,7 +20,6 @@ program
   .version(packageJson.version);
 
 registerCoreCommands(program);
-
 program.addCommand(createClaudeCommand());
 program.addCommand(createCursorCommands());
 program.addCommand(createRegistryCommands());
