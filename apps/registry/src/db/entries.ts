@@ -1,5 +1,4 @@
 import { count, eq, inArray } from "drizzle-orm";
-import { isGithubRepo } from "../enrichment/github";
 import { DatabaseConnection } from "./index";
 import { type EntryCreateParams, entriesTable } from "./schema";
 
@@ -29,7 +28,7 @@ export class EntryStore {
   }
 
   public async addEntry(entry: EntryCreateParams) {
-    await this.db.db.insert(entriesTable).values(entry);
+    return (await this.db.db.insert(entriesTable).values(entry).returning())[0];
   }
 
   public async deleteEntry(id: string) {
@@ -44,16 +43,24 @@ export class EntryStore {
   }
 
   public async getStatistics() {
-    const entries = await this.getAllEntries();
-    const enriched = entries.filter((e) => e.isEnriched);
-    const notEnriched = entries.filter((e) => !e.isEnriched);
-    const notGithub = entries.filter((e) => !isGithubRepo(e.homepage));
+    const entries = await this.db.db
+      .select({
+        id: entriesTable.id,
+        isEnriched: entriesTable.isEnriched,
+        isConnectable: entriesTable.isConnectable,
+        lastConnectionError: entriesTable.lastConnectionError,
+        lastConnectionAt: entriesTable.lastConnectionAttemptedAt,
+        tools: entriesTable.tools,
+      })
+      .from(entriesTable);
 
     return {
       total: entries.length,
-      enriched: enriched.length,
-      notEnriched: notEnriched.length,
-      notGithub: notGithub.length,
+      enriched: entries.filter((e) => e.isEnriched).length,
+      connectionAttempted: entries.filter((e) => e.lastConnectionAt).length,
+      connectable: entries.filter((e) => e.isConnectable).length,
+      connectableError: entries.filter((e) => e.lastConnectionError).length,
+      tools: entries.filter((e) => e.tools?.length).length,
     };
   }
 
@@ -71,14 +78,11 @@ export class EntryStore {
           name: entriesTable.name,
           title: entriesTable.title,
           description: entriesTable.description,
-          // createdAt: entriesTable.createdAt,
-          // isOfficial: entriesTable.isOfficial,
-          // isEnriched: entriesTable.isEnriched,
-          // transport: entriesTable.transport,
+          transport: entriesTable.transport,
           homepage: entriesTable.homepage,
-          // source_registry: entriesTable.source_registry,
-          // categories: entriesTable.categories,
-          // tools: entriesTable.tools,
+          isConnectable: entriesTable.isConnectable,
+          lastConnectionAttemptedAt: entriesTable.lastConnectionAttemptedAt,
+          tools: entriesTable.tools,
           parameters: entriesTable.parameters,
         })
         .from(entriesTable)

@@ -7,6 +7,7 @@ import {
   timestamp,
   varchar,
 } from "drizzle-orm/pg-core";
+import { z } from "zod";
 
 export const entriesTable = pgTable("entries", {
   // **
@@ -21,6 +22,9 @@ export const entriesTable = pgTable("entries", {
   createdAt: timestamp("created_at").defaultNow(),
   isOfficial: boolean("is_official").default(false), // Is it a servers that is officially supported by the companies or makers of the service
   isEnriched: boolean("is_enriched").default(false), // Has the entry been enriched?
+  isConnectable: boolean("is_connectable").default(false), // Has the entry been enriched?
+  lastConnectionAttemptedAt: timestamp("last_connection_attempted_at"),
+  lastConnectionError: text("last_connection_error"),
 
   // **
   // ** Transport
@@ -51,19 +55,7 @@ export const entriesTable = pgTable("entries", {
   // ** Documentation
   // **
   categories: jsonb("categories").default([]).$type<string[]>(),
-  tools: jsonb("tools").default([]).$type<
-    Array<{
-      name: string;
-      description: string;
-      arguments?: string[];
-      inputs?: Array<{
-        name: string;
-        type: string;
-        required?: boolean;
-        description?: string;
-      }>;
-    }>
-  >(),
+  tools: jsonb("tools").default([]).$type<Array<Tool>>(),
   parameters: jsonb("parameters").default([]).$type<Array<EntryParameter>>(),
   readme: text("readme"),
 });
@@ -79,3 +71,26 @@ export type EntryParameter = {
   required: true;
   type: "string";
 };
+
+export const toolSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  inputSchema: z.object({
+    type: z.string(),
+    required: z.array(z.string()).optional(),
+    properties: z
+      .record(
+        z.string(),
+        z.object({
+          type: z.string().optional(),
+          description: z.string().optional(),
+          default: z.unknown().optional(),
+          title: z.string().optional(),
+          anyOf: z.unknown().optional(),
+        }),
+      )
+      .optional(),
+  }),
+});
+
+export type Tool = z.infer<typeof toolSchema>;

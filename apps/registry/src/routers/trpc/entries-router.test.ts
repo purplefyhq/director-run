@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { type RegistryClient, createRegistryClient } from "../../client";
 import { env } from "../../config";
+import type { EntryGetParams } from "../../db/schema";
 import { Registry } from "../../registry";
-import { makeTestEntries } from "../../test/fixtures/entries";
+import { makeTestEntries, makeTestEntry } from "../../test/fixtures/entries";
 
 describe("Entries Router", () => {
   let registry: Registry;
@@ -37,6 +38,71 @@ describe("Entries Router", () => {
       );
     });
 
+    describe("update entry", () => {
+      let entry: EntryGetParams;
+
+      beforeEach(async () => {
+        await registry.store.purge();
+        entry = await registry.store.entries.addEntry(
+          makeTestEntry({
+            ...makeTestEntry(),
+            isConnectable: false,
+            lastConnectionAttemptedAt: undefined,
+            lastConnectionError: undefined,
+          }),
+        );
+      });
+
+      it("should be protected", () => {
+        expectToThrowUnauthorized(
+          unauthenticatedClient.entries.updateEntry.mutate({
+            id: entry.id,
+            isConnectable: true,
+            lastConnectionAttemptedAt: new Date(),
+            lastConnectionError: "test",
+          }),
+        );
+      });
+
+      it("should update the entry", async () => {
+        await authenticatedClient.entries.updateEntry.mutate({
+          id: entry.id,
+          isConnectable: true,
+          lastConnectionAttemptedAt: new Date(),
+          lastConnectionError: "test",
+          tools: [
+            {
+              name: "test",
+              description: "test",
+              inputSchema: {
+                type: "object",
+                required: [],
+                properties: {},
+              },
+            },
+          ],
+        });
+
+        const updatedEntry = await registry.store.entries.getEntryByName(
+          entry.name,
+        );
+        expect(updatedEntry.isConnectable).toBe(true);
+        expect(updatedEntry.lastConnectionAttemptedAt).toBeDefined();
+        expect(updatedEntry.lastConnectionError).toBe("test");
+        expect(updatedEntry.tools).toEqual([
+          {
+            name: "test",
+            description: "test",
+            inputSchema: {
+              type: "object",
+              required: [],
+              properties: {},
+            },
+          },
+        ]);
+      });
+    });
+
     it("should be protected", async () => {
       await registry.store.purge();
       expectToThrowUnauthorized(unauthenticatedClient.entries.purge.mutate({}));
@@ -48,10 +114,12 @@ describe("Entries Router", () => {
       );
       expectToThrowUnauthorized(unauthenticatedClient.entries.stats.query({}));
       expect(await authenticatedClient.entries.stats.query({})).toEqual({
-        enriched: 0,
-        notEnriched: 0,
-        notGithub: 0,
         total: 0,
+        enriched: 0,
+        connectionAttempted: 0,
+        connectable: 0,
+        connectableError: 0,
+        tools: 0,
       });
     });
   });
