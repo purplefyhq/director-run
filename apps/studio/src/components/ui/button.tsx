@@ -15,13 +15,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-fg text-surface hover:bg-fg/80 active:bg-fg/90",
-        secondary:
-          "bg-accent text-fg-subtle transition-opacity hover:opacity-50",
+        secondary: "bg-accent text-fg transition-opacity hover:opacity-50",
         inverse: "bg-surface text-fg hover:bg-surface/50",
         ghost:
           "bg-transparent text-fg-subtle transition-colors hover:bg-accent hover:text-fg focus-visible:bg-accent focus-visible:text-fg",
       },
       size: {
+        sm: "h-6 rounded-md px-2.5 pb-0.25 font-medium text-[13px]",
         default: "h-8 rounded-lg px-3 pb-0.25",
         lg: "h-10 rounded-lg px-4 pb-0.25 text-base",
         icon: "size-6 rounded-md [&_svg]:size-5",
