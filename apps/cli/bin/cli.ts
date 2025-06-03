@@ -4,7 +4,7 @@ import "../src/env";
 
 import { DirectorCommand } from "@director.run/utilities/cli/director-command";
 import packageJson from "../package.json";
-import { createClientCommand } from "../src/commands/client";
+import { registerClientCommands } from "../src/commands/client";
 import { registerCoreCommands } from "../src/commands/core";
 import { createRegistryCommands } from "../src/commands/registry";
 
@@ -19,13 +19,13 @@ program
   .version(packageJson.version);
 
 registerCoreCommands(program);
-program.addCommand(createClientCommand());
+registerClientCommands(program);
 program.addCommand(createRegistryCommands());
 
 program.addExamples(`
-  $ director create my-proxy
-  $ director registry install my-proxy iterm
-  $ director claude install my-proxy
+  $ director create my-proxy # Create a new proxy
+  $ director add my-proxy --entry fetch # Add a server to a proxy
+  $ director connect my-proxy --target claude # Connect my-proxy to claude
 `);
 
 program.parse();

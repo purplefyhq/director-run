@@ -1,4 +1,3 @@
-import path from "node:path";
 import { Gateway } from "@director.run/gateway/gateway";
 import {
   getSSEPathForProxy,
@@ -23,19 +22,16 @@ import { env } from "../env";
 import { registerAddCommand } from "./core/add-command";
 import { registerRemoveCommand } from "./core/remove-command";
 
-const cliPath = path.join(__dirname, "../../bin/cli.ts");
-
 export async function startGateway() {
   await Gateway.start({
-    cliPath,
     port: env.GATEWAY_PORT,
-    databaseFilePath: env.DB_FILE_PATH,
+    databaseFilePath: env.CONFIG_FILE_PATH,
     registryURL: env.REGISTRY_API_URL,
     allowedOrigins: [env.STUDIO_URL, /^https?:\/\/localhost(:\d+)?$/],
   });
 }
 
-export function registerCoreCommands(program: DirectorCommand) {
+export function registerCoreCommands(program: DirectorCommand): void {
   program
     .command("serve")
     .description("Start the web service")
@@ -173,18 +169,15 @@ export function registerCoreCommands(program: DirectorCommand) {
     )
     .action(
       actionWithErrorHandler(
-        async (proxyId: string, options: { target: string }) => {
-          if (options.target === "claude") {
-            const result = await gatewayClient.installer.claude.install.mutate({
-              proxyId,
-              baseUrl: env.GATEWAY_URL,
-            });
-            console.log(result);
-          } else if (options.target === "cursor") {
-            const result = await gatewayClient.installer.cursor.install.mutate({
-              proxyId,
-              baseUrl: env.GATEWAY_URL,
-            });
+        async (proxyId: string, options: { target: "claude" | "cursor" }) => {
+          if (options.target) {
+            const result = await gatewayClient.installer.byProxy.install.mutate(
+              {
+                proxyId,
+                baseUrl: env.GATEWAY_URL,
+                client: options.target,
+              },
+            );
             console.log(result);
           } else {
             console.log();
@@ -201,7 +194,7 @@ export function registerCoreCommands(program: DirectorCommand) {
             );
 
             const stdioCommand = {
-              command: cliPath,
+              command: "director",
               args: ["http2stdio", streamableURL],
               env: {
                 LOG_LEVEL: "silent",
@@ -232,20 +225,13 @@ export function registerCoreCommands(program: DirectorCommand) {
     )
     .action(
       actionWithErrorHandler(
-        async (proxyId: string, options: { target: string }) => {
-          if (options.target === "claude") {
-            console.log(
-              await gatewayClient.installer.claude.uninstall.mutate({
-                proxyId,
-              }),
-            );
-          } else if (options.target === "cursor") {
-            console.log(
-              await gatewayClient.installer.cursor.uninstall.mutate({
-                proxyId,
-              }),
-            );
-          }
+        async (proxyId: string, options: { target: "claude" | "cursor" }) => {
+          console.log(
+            await gatewayClient.installer.byProxy.uninstall.mutate({
+              proxyId,
+              client: options.target,
+            }),
+          );
         },
       ),
     );
@@ -255,7 +241,9 @@ export function registerCoreCommands(program: DirectorCommand) {
 
   program
     .command("http2stdio <url>")
-    .description("Proxy an HTTP connection to a stdio stream")
+    .description(
+      "Proxy an HTTP connection (sse or streamable) to a stdio stream",
+    )
     .action(async (url) => {
       await proxyHTTPToStdio(url);
     });
