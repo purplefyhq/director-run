@@ -1,6 +1,5 @@
 import { TRPCClientError } from "@trpc/client";
 import Table from "cli-table3";
-import { Option } from "commander";
 import { getLogger } from "../logger";
 
 const logger = getLogger("cli");
@@ -21,12 +20,6 @@ export function actionWithErrorHandler<Args extends unknown[]>(
       }
     }
   };
-}
-
-export function mandatoryOption(flags: string, description?: string) {
-  const option = new Option(flags, description);
-  option.makeOptionMandatory(true);
-  return option;
 }
 
 export function makeTable(head: string[]) {

@@ -145,7 +145,7 @@
       "name": "@director.run/gateway",
       "version": "0.0.1",
       "dependencies": {
-        "@director.run/installer": "workspace:*",
+        "@director.run/client-manager": "workspace:*",
         "@director.run/mcp": "workspace:*",
         "@director.run/registry": "workspace:*",
         "@director.run/utilities": "workspace:*",
@@ -179,7 +179,7 @@
       },
     },
     "packages/installer": {
-      "name": "@director.run/installer",
+      "name": "@director.run/client-manager",
       "version": "0.0.1",
       "dependencies": {
         "@director.run/mcp": "workspace:*",
@@ -255,11 +255,11 @@
 
     "@director.run/cli": ["@director.run/cli@workspace:apps/cli"],
 
+    "@director.run/client-manager": ["@director.run/client-manager@workspace:packages/installer"],
+
     "@director.run/docs": ["@director.run/docs@workspace:apps/docs"],
 
     "@director.run/gateway": ["@director.run/gateway@workspace:packages/gateway"],
-
-    "@director.run/installer": ["@director.run/installer@workspace:packages/installer"],
 
     "@director.run/mcp": ["@director.run/mcp@workspace:packages/mcp"],
 

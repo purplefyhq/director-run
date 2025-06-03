@@ -1,6 +1,7 @@
 import type { ProxyTransport } from "@director.run/mcp/types";
 import { createRegistryClient } from "@director.run/registry/client";
 import type { EntryParameter } from "@director.run/registry/db/schema";
+import { getLogger } from "@director.run/utilities/logger";
 import {
   optionalStringSchema,
   requiredStringSchema,
@@ -17,6 +18,8 @@ const parameterToZodSchema = (parameter: EntryParameter) => {
     throw new Error(`Unsupported parameter type: ${parameter.type}`);
   }
 };
+
+const logger = getLogger("registry-router");
 
 export function createRegistryRouter({
   registryURL,
@@ -38,6 +41,10 @@ export function createRegistryRouter({
       .input(z.object({ name: z.string() }))
       .query(({ input }) => registryClient.entries.getEntryByName.query(input)),
 
+    /**
+     * @deprecated use getTransportForEntry instead
+     * see the `director add` command for an example of how to use getTransportForEntry
+     */
     addServerFromRegistry: t.procedure
       .input(
         z.object({
@@ -47,6 +54,9 @@ export function createRegistryRouter({
         }),
       )
       .mutation(async ({ input }) => {
+        logger.warn(
+          "addServerFromRegistry is deprecated, use getTransportForEntry instead",
+        );
         const entry = await registryClient.entries.getEntryByName.query({
           name: input.entryName,
         });

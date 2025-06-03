@@ -4,8 +4,8 @@ echo "----------------------------------------"
 echo 
 
 bun cli reset
-bun cli claude purge
-bun cli cursor purge
+bun cli client reset --target claude
+# bun cli client reset --target cursor
 echo
 echo "----------------------------------------"
 echo "- Creating a new proxy and installing the fetch server"
@@ -13,8 +13,12 @@ echo "----------------------------------------"
 echo 
 
 bun cli create my-proxy
-bun cli registry install my-proxy fetch
-# bun cli claude install my-proxy
+
+# target
+bun cli add my-proxy --entry fetch
+bun cli connect my-proxy --target claude
+# TODO
+# bun cli connect my-proxy
 # bun cli cursor install my-proxy
 
 echo
