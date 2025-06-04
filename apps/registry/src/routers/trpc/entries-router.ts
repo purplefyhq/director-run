@@ -9,8 +9,7 @@ import { protectedProcedure } from ".";
 import { type EntryParameter, toolSchema } from "../../db/schema";
 import type { Store } from "../../db/store";
 import { enrichEntries } from "../../enrichment/enrich";
-import { fetchRaycastRegistry } from "../../importers/raycast";
-import { getSeedEntries } from "../../importers/seed";
+import { entries } from "../../seed/entries";
 
 const parameterToZodSchema = (parameter: EntryParameter) => {
   if (parameter.type === "string") {
@@ -48,25 +47,32 @@ export function createEntriesRouter({ store }: { store: Store }) {
         let transport: ProxyTransport;
 
         if (entry.transport.type === "stdio") {
-          const env: Record<string, string> = {};
+          const env: Record<string, string> = {
+            ...entry.transport.env,
+          };
           let args: string[] = [...entry.transport.args];
           // only stdio transports have parameters
           entry.parameters?.forEach((parameter) => {
-            const inputValue = input.parameters?.[parameter.name];
+            const paramValue = input.parameters?.[parameter.name];
             const schema = parameterToZodSchema(parameter);
 
-            schema.parse(inputValue);
+            schema.parse(paramValue);
 
-            if (!inputValue) {
+            if (!paramValue) {
               // Not a required parameter, so we can skip it
+              // Missing required parameters are handled by the zod schema
               return;
             }
 
             // Substitute the parameter into the transport command
             if (parameter.scope === "env") {
-              env[parameter.name] = inputValue;
+              Object.entries(env).forEach(([key, value]) => {
+                env[key] = value.replace(`<${parameter.name}>`, paramValue);
+              });
             } else if (parameter.scope === "args") {
-              args = args.map((arg) => arg.replace(parameter.name, inputValue));
+              args = args.map((arg) =>
+                arg.replace(`<${parameter.name}>`, paramValue),
+              );
             }
           });
 
@@ -111,8 +117,7 @@ export function createEntriesRouter({ store }: { store: Store }) {
 
     populate: protectedProcedure.input(z.object({})).mutation(async () => {
       await store.entries.deleteAllEntries();
-      await store.entries.addEntries(await fetchRaycastRegistry());
-      await store.entries.addEntries(getSeedEntries());
+      await store.entries.addEntries(entries);
     }),
 
     enrich: protectedProcedure.input(z.object({})).mutation(async () => {

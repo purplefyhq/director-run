@@ -1,70 +1,24 @@
 import { type EntryCreateParams } from "../db/schema";
 
-export async function fetchRaycastRegistry(): Promise<EntryCreateParams[]> {
-  const toEntryParams = (entry: RaycastRegistryEntry): EntryCreateParams => ({
-    name: entry.name,
-    title: entry.title,
-    description: entry.description,
-    homepage: entry.homepage || "",
-    transport: {
-      type: "stdio",
-      command: entry.configuration.command,
-      args: entry.configuration.args,
-      env: entry.configuration.env,
-    },
-    source_registry: {
-      name: "RAYCAST",
-      entryId: entry.name,
-    },
-  });
+// Original source: https://github.com/raycast/extensions/blob/main/extensions/model-context-protocol-registry/src/registries/builtin/entries.ts
+// "https://raw.githubusercontent.com/raycast/extensions/refs/heads/main/extensions/model-context-protocol-registry/assets/chroma.png"
 
-  return [
-    ...OFFICIAL_ENTRIES.map(toEntryParams).map((e) => ({
-      ...e,
-      isOfficial: true,
-    })),
-    ...COMMUNITY_ENTRIES.map(toEntryParams),
-  ];
-}
-
-type RaycastRegistryEntry = {
-  name: string;
-  title: string;
-  description: string;
-  icon?:
-    | string
-    | { source: string | { light: string; dark: string }; tintColor?: string };
-  homepage?: string;
-  configuration: {
-    command: string;
-    args: string[];
-    env?: Record<string, string>;
-  };
-};
-
-const Color = {
-  PrimaryText: "#000000",
-};
-
-const Icon = {
-  Folder: "https://svgl.app/library/folder.svg",
-  MemoryStick: "",
-};
-
-const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
+export const entries: EntryCreateParams[] = [
   {
     name: "brave-search",
     title: "Brave Search",
     description:
       "A Model Context Protocol server for Brave Search. This server provides tools to read, search, and manipulate Brave Search repositories via Large Language Models.",
+    isOfficial: true,
     icon: "https://svgl.app/library/brave.svg",
     homepage:
       "https://github.com/modelcontextprotocol/servers/tree/HEAD/src/brave-search",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-brave-search"],
       env: {
-        BRAVE_API_KEY: "YOUR_API_KEY_HERE",
+        BRAVE_API_KEY: "<brave-api-key>",
       },
     },
   },
@@ -73,20 +27,22 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Chroma",
     description:
       "This server provides data retrieval capabilities powered by Chroma, enabling AI models to create collections over generated data and user inputs, and retrieve that data using vector search, full text search, metadata filtering, and more.",
+    isOfficial: true,
     icon: "chroma.png",
     homepage: "https://github.com/chroma-core/chroma-mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "uvx",
       args: [
         "chroma-mcp",
         "--client-type",
         "cloud",
         "--tenant",
-        "YOUR_TENANT_ID_HERE",
+        "<chroma-tenant-id>",
         "--database",
-        "YOUR_DATABASE_NAME_HERE",
+        "<chroma-database-name>",
         "--api-key",
-        "YOUR_API_KEY_HERE",
+        "<chroma-api-key>",
       ],
     },
   },
@@ -95,12 +51,11 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Context 7",
     description:
       "Context7 MCP pulls up-to-date, version-specific documentation and code examples straight from the source — and places them directly into your prompt.",
-    icon: {
-      source: "context-7.svg",
-      tintColor: Color.PrimaryText,
-    },
+    isOfficial: true,
+    icon: "context-7.svg",
     homepage: "https://github.com/upstash/context7",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@upstash/context7-mcp@latest"],
     },
@@ -110,10 +65,12 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Git",
     description:
       "A Model Context Protocol server for Git repository interaction and automation. This server provides tools to read, search, and manipulate Git repositories via Large Language Models.",
+    isOfficial: true,
     icon: "https://svgl.app/library/git.svg",
     homepage:
       "https://github.com/modelcontextprotocol/servers/tree/main/src/git",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "uvx",
       args: ["mcp-server-git"],
     },
@@ -123,15 +80,12 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "GitHub",
     description:
       "The GitHub MCP Server is a Model Context Protocol (MCP) server that provides seamless integration with GitHub APIs, enabling advanced automation and interaction capabilities for developers and tools.",
-    icon: {
-      source: {
-        light: "https://svgl.app/library/github_light.svg",
-        dark: "https://svgl.app/library/github_dark.svg",
-      },
-    },
+    isOfficial: true,
+    icon: "https://svgl.app/library/github_light.svg",
     homepage:
       "https://github.com/github/github-mcp-server?utm_source=Blog&utm_medium=GitHub&utm_campaign=proplus&utm_notesblogtop",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "docker",
       args: [
         "run",
@@ -142,7 +96,7 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
         "ghcr.io/github/github-mcp-server",
       ],
       env: {
-        GITHUB_PERSONAL_ACCESS_TOKEN: "<YOUR_TOKEN>",
+        GITHUB_PERSONAL_ACCESS_TOKEN: "<github-personal-access-token>",
       },
     },
   },
@@ -151,14 +105,16 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "GitLab",
     description:
       "MCP Server for the GitLab API, enabling project management, file operations, and more.",
+    isOfficial: true,
     icon: "https://svgl.app/library/gitlab.svg",
     homepage:
       "https://github.com/modelcontextprotocol/servers/tree/main/src/gitlab",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-gitlab"],
       env: {
-        GITLAB_PERSONAL_ACCESS_TOKEN: "<YOUR_TOKEN>",
+        GITLAB_PERSONAL_ACCESS_TOKEN: "<gitlab-personal-access-token>",
         GITLAB_API_URL: "https://gitlab.com/api/v4", // Optional, for self-hosted instances
       },
     },
@@ -168,17 +124,16 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "E2B Code Interpreter",
     description:
       "A Model Context Protocol server for running code in a secure sandbox by [E2B](https://e2b.dev/).",
-    icon: {
-      source: "e2b.svg",
-      tintColor: Color.PrimaryText,
-    },
+    isOfficial: true,
+    icon: "e2b.svg",
     homepage:
       "https://github.com/e2b-dev/mcp-server/blob/main/packages/js/README.md",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@e2b/mcp-server"],
       env: {
-        E2B_API_KEY: "YOUR_API_KEY_HERE",
+        E2B_API_KEY: "<e2b-api-key>",
       },
     },
   },
@@ -187,13 +142,15 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Exa",
     description:
       "A Model Context Protocol (MCP) server lets AI assistants like Claude use the Exa AI Search API for web searches. This setup allows AI models to get real-time web information in a safe and controlled way.",
+    isOfficial: true,
     icon: "exa.png",
     homepage: "https://github.com/exa-labs/exa-mcp-server",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["exa-mcp-server"],
       env: {
-        EXA_API_KEY: "YOUR_API_KEY_HERE",
+        EXA_API_KEY: "<exa-api-key>",
       },
     },
   },
@@ -202,14 +159,16 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Google Drive",
     description:
       "This MCP server integrates with Google Drive to allow listing, reading, and searching over files.",
+    isOfficial: true,
     icon: "https://svgl.app/library/drive.svg",
     homepage:
       "https://github.com/modelcontextprotocol/servers/tree/main/src/gdrive",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-gdrive"],
       env: {
-        GDRIVE_CREDENTIALS_PATH: "/path/to/.gdrive-server-credentials.json",
+        GDRIVE_CREDENTIALS_PATH: "<gdrive-server-credentials-path>",
       },
     },
   },
@@ -217,9 +176,11 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     name: "jetbrains",
     title: "JetBrains",
     description: "The server proxies requests from client to JetBrains IDE.",
+    isOfficial: true,
     icon: "https://svgl.app/library/jetbrains.svg",
     homepage: "https://github.com/JetBrains/mcp-jetbrains",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@jetbrains/mcp-proxy"],
     },
@@ -229,13 +190,15 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Heroku",
     description:
       "The Heroku Platform MCP Server is a specialized Model Context Protocol (MCP) implementation designed to facilitate seamless interaction between large language models (LLMs) and the Heroku Platform. This server provides a robust set of tools and capabilities that enable LLMs to read, manage, and operate Heroku Platform resources.",
+    isOfficial: true,
     icon: "heroku.svg",
     homepage: "https://github.com/heroku/heroku-mcp-server",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@heroku/mcp-server"],
       env: {
-        HEROKU_API_KEY: "YOUR_API_KEY_HERE",
+        HEROKU_API_KEY: "<heroku-api-key>",
       },
     },
   },
@@ -244,15 +207,17 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Filesystem",
     description:
       "Node.js server implementing Model Context Protocol (MCP) for filesystem operations. The server will only allow operations within directories specified via args.",
-    icon: Icon.Folder,
+    isOfficial: true,
+    icon: "https://svgl.app/library/folder.svg",
     homepage:
       "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "YOUR_ALLOWED_PATH_HERE",
+        "<fs-allowed-path>",
       ],
     },
   },
@@ -261,15 +226,17 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Paddle",
     description:
       "Paddle Billing is the developer-first merchant of record. We take care of payments, tax, subscriptions, and metrics with one unified API that does it all. This is a Model Context Protocol (MCP) server that provides tools for interacting with the Paddle API.",
+    isOfficial: true,
     icon: "paddle.svg",
     homepage: "https://github.com/PaddleHQ/paddle-mcp-server",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: [
         "-y",
         "@paddle/paddle-mcp",
-        "--api-key=PADDLE_API_KEY",
-        "--environment=(sandbox|production)",
+        "--api-key=<paddle-api-key>",
+        "--environment=<paddle-environment>",
       ],
     },
   },
@@ -278,13 +245,15 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Perplexity",
     description:
       "An MCP server implementation that integrates the Sonar API to provide Claude with unparalleled real-time, web-wide research.",
+    isOfficial: true,
     icon: "https://svgl.app/library/perplexity.svg",
     homepage: "https://github.com/ppl-ai/modelcontextprotocol",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "server-perplexity-ask"],
       env: {
-        PERPLEXITY_API_KEY: "YOUR_API_KEY_HERE",
+        PERPLEXITY_API_KEY: "<perplexity-api-key>",
       },
     },
   },
@@ -293,9 +262,11 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Sentry",
     description:
       "This service provides a Model Context Provider (MCP) for interacting with Sentry's API.",
+    isOfficial: true,
     icon: "sentry.svg",
     homepage: "https://mcp.sentry.dev/",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "mcp-remote", "https://mcp.sentry.dev/sse"],
     },
@@ -305,16 +276,18 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Slack",
     description:
       "This service provides a Model Context Provider (MCP) for interacting with Slack's API.",
+    isOfficial: true,
     icon: "https://svgl.app/library/slack.svg",
     homepage:
       "https://github.com/modelcontextprotocol/servers/tree/main/src/slack",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-slack"],
       env: {
-        SLACK_BOT_TOKEN: "xoxb-your-bot-token",
-        SLACK_TEAM_ID: "T01234567",
-        SLACK_CHANNEL_IDS: "C01234567, C76543210",
+        SLACK_BOT_TOKEN: "<slack-bot-token>",
+        SLACK_TEAM_ID: "<slack-team-id>",
+        SLACK_CHANNEL_IDS: "<slack-channel-ids>", // C01234567, C76543210
       },
     },
   },
@@ -323,9 +296,11 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Square",
     description:
       "This project follows the Model Context Protocol standard, allowing AI assistants to interact with Square's connect API.",
+    isOfficial: true,
     icon: "square.svg",
     homepage: "https://github.com/square/square-mcp-server",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["mcp-remote", "https://mcp.squareup.com/sse"],
     },
@@ -335,15 +310,17 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Stripe",
     description:
       "This project follows the Model Context Protocol standard, allowing AI assistants to interact with Stripe's API.",
+    isOfficial: true,
     icon: "https://svgl.app/library/stripe.svg",
     homepage: "https://github.com/stripe/agent-toolkit",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: [
         "-y",
         "@stripe/mcp",
         "--tools=all",
-        "--api-key=YOUR_STRIPE_SECRET_KEY",
+        "--api-key=<stripe-secret-key>",
       ],
     },
   },
@@ -352,15 +329,17 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Supabase",
     description:
       "This project follows the Model Context Protocol standard, allowing AI assistants to interact with Supabase's API.",
+    isOfficial: true,
     icon: "https://svgl.app/library/supabase.svg",
     homepage: "https://supabase.com/docs/guides/getting-started/mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: [
         "-y",
         "@supabase/mcp-server-supabase@latest",
         "--access-token",
-        "<personal-access-token>",
+        "<supabase-personal-access-token>",
       ],
     },
   },
@@ -369,13 +348,15 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Tavily",
     description:
       "This project follows the Model Context Protocol standard, allowing AI assistants to interact with Tavily's API.",
+    isOfficial: true,
     icon: "tavily.svg",
     homepage: "https://github.com/tavily-ai/tavily-mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "tavily-mcp"],
       env: {
-        TAVILY_API_KEY: "YOUR_API_KEY_HERE",
+        TAVILY_API_KEY: "<tavily-api-key>",
       },
     },
   },
@@ -384,14 +365,16 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Xero",
     description:
       "This is a Model Context Protocol (MCP) server implementation for Xero. It provides a bridge between the MCP protocol and Xero's API, allowing for standardized access to Xero's accounting and business features.",
+    isOfficial: true,
     icon: "xero.svg",
     homepage: "https://github.com/XeroAPI/xero-mcp-server",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@xeroapi/xero-mcp-server@latest"],
       env: {
-        XERO_CLIENT_ID: "YOUR_CLIENT_ID_HERE",
-        XERO_CLIENT_SECRET: "YOUR_CLIENT_SECRET_HERE",
+        XERO_CLIENT_ID: "<xero-client-id>",
+        XERO_CLIENT_SECRET: "<xero-client-secret>",
       },
     },
   },
@@ -400,13 +383,15 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Firecrawl",
     description:
       "A Model Context Protocol (MCP) server implementation that integrates with Firecrawl for web scraping capabilities.",
+    isOfficial: true,
     icon: "🔥",
     homepage: "https://github.com/mendableai/firecrawl-mcp-server",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "firecrawl-mcp"],
       env: {
-        FIRECRAWL_API_KEY: "YOUR_API_KEY_HERE",
+        FIRECRAWL_API_KEY: "<firecrawl-api-key>",
       },
     },
   },
@@ -415,9 +400,11 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Playwright",
     description:
       "A Model Context Protocol server that provides browser automation capabilities using Playwright. This server enables LLMs to interact with web pages through structured accessibility snapshots, bypassing the need for screenshots or visually-tuned models.",
+    isOfficial: true,
     icon: "https://playwright.dev/img/playwright-logo.svg",
     homepage: "https://github.com/microsoft/playwright-mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["@playwright/mcp@latest"],
     },
@@ -427,14 +414,16 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Notion",
     description:
       "The Notion MCP Server is a Model Context Protocol (MCP) server that provides seamless integration with Notion APIs, enabling advanced automation and interaction capabilities for developers and tools.",
+    isOfficial: true,
     icon: "https://svgl.app/library/notion.svg",
     homepage: "https://github.com/makenotion/notion-mcp-server",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@notionhq/notion-mcp-server"],
       env: {
         OPENAPI_MCP_HEADERS:
-          '{"Authorization": "Bearer ntn_****", "Notion-Version": "2022-06-28" }',
+          '{"Authorization": "Bearer <notion-bearer-token>", "Notion-Version": "2022-06-28" }',
       },
     },
   },
@@ -443,9 +432,11 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Pydantic Run Python",
     description:
       "The MCP Run Python package is an MCP server that allows agents to execute Python code in a secure, sandboxed environment. It uses Pyodide to run Python code in a JavaScript environment with Deno, isolating execution from the host system.",
+    isOfficial: true,
     icon: "pydantic.svg",
     homepage: "https://ai.pydantic.dev/mcp/run-python/",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "deno",
       args: [
         "run",
@@ -463,11 +454,13 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Pydantic Logfire",
     description:
       "This repository contains a Model Context Protocol (MCP) server with tools that can access the OpenTelemetry traces and metrics you've sent to Logfire.\n\nThis MCP server enables LLMs to retrieve your application's telemetry data, analyze distributed traces, and make use of the results of arbitrary SQL queries executed using the Logfire APIs.",
+    isOfficial: true,
     icon: "pydantic.svg",
     homepage: "https://github.com/pydantic/logfire-mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "uvx",
-      args: ["logfire-mcp", "--read-token=YOUR_TOKEN_HERE"],
+      args: ["logfire-mcp", "--read-token=<logfire-api-key>"],
     },
   },
   {
@@ -475,9 +468,11 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "Polar",
     description:
       "Extend the capabilities of your AI Agents with Polar as MCP Server",
+    isOfficial: true,
     icon: "polar.svg",
     homepage: "https://docs.polar.sh/integrate/mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: [
         "-y",
@@ -487,7 +482,7 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
         "mcp",
         "start",
         "--access-token",
-        "YOUR_ACCESS_TOKEN_HERE",
+        "<polar-access-token>",
       ],
     },
   },
@@ -496,30 +491,28 @@ const OFFICIAL_ENTRIES: RaycastRegistryEntry[] = [
     title: "ElevenLabs",
     description:
       "Official ElevenLabs Model Context Protocol (MCP) server that enables interaction with powerful Text to Speech and audio processing APIs. This server allows MCP clients like Claude Desktop, Cursor, Windsurf, OpenAI Agents and others to generate speech, clone voices, transcribe audio, and more.",
-    icon: {
-      source: "elevenlabs.svg",
-      tintColor: Color.PrimaryText,
-    },
+    isOfficial: true,
+    icon: "elevenlabs.svg",
     homepage: "https://github.com/elevenlabs/elevenlabs-mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "uvx",
       args: ["elevenlabs-mcp"],
       env: {
-        ELEVENLABS_API_KEY: "YOUR_API_KEY_HERE",
+        ELEVENLABS_API_KEY: "<elevenlabs-api-key>",
       },
     },
   },
-];
-
-const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
   {
     name: "talk-to-figma",
     title: "Talk to Figma",
     description:
       "This project implements a Model Context Protocol (MCP) integration between Cursor AI and Figma, allowing Cursor to communicate with Figma for reading designs and modifying them programmatically.",
+    isOfficial: false,
     icon: "https://svgl.app/library/figma.svg",
     homepage: "https://github.com/sonnylazuardi/cursor-talk-to-figma-mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "bunx",
       args: ["cursor-talk-to-figma-mcp@latest"],
     },
@@ -528,9 +521,11 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     name: "airbnb",
     title: "Airbnb",
     description: "MCP Server for searching Airbnb and get listing details.",
+    isOfficial: false,
     icon: "https://svgl.app/library/airbnb.svg",
     homepage: "https://github.com/openbnb-org/mcp-server-airbnb",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@openbnb/mcp-server-airbnb", "--ignore-robots-txt"],
     },
@@ -540,13 +535,15 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     title: "Airtable",
     description:
       "A Model Context Protocol server that provides read and write access to Airtable databases. This server enables LLMs to inspect database schemas, then read and write records.",
+    isOfficial: false,
     icon: "airtable.svg",
     homepage: "https://github.com/domdomegg/airtable-mcp-server",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "airtable-mcp-server"],
       env: {
-        AIRTABLE_API_KEY: "YOUR_API_KEY_HERE",
+        AIRTABLE_API_KEY: "<airtable-api-key>",
       },
     },
   },
@@ -555,9 +552,11 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     title: "Apple Script",
     description:
       "A Model Context Protocol (MCP) server that lets you run AppleScript code to interact with Mac. This MCP is intentionally designed to be simple, straightforward, intuitive, and require minimal setup.",
+    isOfficial: false,
     icon: "applescript.png",
     homepage: "https://github.com/peakmojo/applescript-mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["@peakmojo/applescript-mcp"],
     },
@@ -567,9 +566,11 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     title: "Basic Memory",
     description:
       "Basic Memory lets you build persistent knowledge through natural conversations with Large Language Models (LLMs) like Claude, while keeping everything in simple Markdown files on your computer. It uses the Model Context Protocol (MCP) to enable any compatible LLM to read and write to your local knowledge base.",
-    icon: Icon.MemoryStick,
+    isOfficial: false,
+    icon: "https://svgl.app/library/memory-stick.svg",
     homepage: "https://github.com/basicmachines-co/basic-memory",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "uvx",
       args: ["basic-memory", "mcp"],
     },
@@ -579,16 +580,18 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     title: "BigQuery",
     description:
       "A Model Context Protocol server that provides access to BigQuery. This server enables LLMs to inspect database schemas and execute queries.",
+    isOfficial: false,
     icon: "bigquery.svg",
     homepage: "https://github.com/LucasHild/mcp-server-bigquery",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "uvx",
       args: [
         "mcp-server-bigquery",
         "--project",
-        "YOUR_PROJECT_ID",
+        "<bigquery-project-id>",
         "--location",
-        "YOUR_LOCATION",
+        "<bigquery-location>",
       ],
     },
   },
@@ -597,14 +600,16 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     title: "ClickUp",
     description:
       "A Model Context Protocol (MCP) server for integrating ClickUp tasks with AI applications. This server allows AI agents to interact with ClickUp tasks, spaces, lists, and folders through a standardized protocol.",
+    isOfficial: false,
     icon: "clickup.svg",
     homepage: "https://github.com/TaazKareem/clickup-mcp-server",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@taazkareem/clickup-mcp-server@latest"],
       env: {
-        CLICKUP_API_KEY: "YOUR_API_KEY_HERE",
-        CLICKUP_TEAM_ID: "YOUR_TEAM_ID_HERE",
+        CLICKUP_API_KEY: "<clickup-api-key>",
+        CLICKUP_TEAM_ID: "<clickup-team-id>",
         DOCUMENT_SUPPORT: "true",
       },
     },
@@ -614,13 +619,15 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     title: "Discord",
     description:
       "A Model Context Protocol (MCP) server for the Discord API (JDA), allowing seamless integration of Discord Bot with MCP-compatible applications like Claude Desktop. Enable your AI assistants to seamlessly interact with Discord. Manage channels, send messages, and retrieve server information effortlessly. Enhance your Discord experience with powerful automation capabilities.",
+    isOfficial: false,
     icon: "https://svgl.app/library/discord.svg",
     homepage: "https://github.com/SaseQ/discord-mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["mcp-remote", "https://gitmcp.io/SaseQ/discord-mcp"],
       env: {
-        DISCORD_TOKEN: "YOUR_DISCORD_BOT_TOKEN",
+        DISCORD_TOKEN: "<discord-bot-token>",
       },
     },
   },
@@ -629,14 +636,17 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     title: "Firebase",
     description:
       "Firebase MCP enables AI assistants to work directly with Firebase services.",
+    isOfficial: false,
     icon: "https://svgl.app/library/firebase.svg",
     homepage: "https://github.com/gannonh/firebase-mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@gannonh/firebase-mcp"],
       env: {
-        SERVICE_ACCOUNT_KEY_PATH: "/absolute/path/to/serviceAccountKey.json",
-        FIREBASE_STORAGE_BUCKET: "your-project-id.firebasestorage.app",
+        SERVICE_ACCOUNT_KEY_PATH:
+          "<firebase-absolute-path-to-service-account-key>",
+        FIREBASE_STORAGE_BUCKET: "<firebase-storage-bucket>",
       },
     },
   },
@@ -645,17 +655,16 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     title: "Ghost",
     description:
       "A Model Context Protocol (MCP) server for interacting with Ghost CMS through LLM interfaces like Claude. This server provides secure and comprehensive access to your Ghost blog, leveraging JWT authentication and a rich set of MCP tools for managing posts, users, members, tiers, offers, and newsletters.",
-    icon: {
-      source: "ghost.png",
-      tintColor: Color.PrimaryText,
-    },
+    isOfficial: false,
+    icon: "ghost.png",
     homepage: "https://github.com/MFYDev/ghost-mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "@fanyangmeng/ghost-mcp"],
       env: {
-        GHOST_API_URL: "https://yourblog.com",
-        GHOST_ADMIN_API_KEY: "your_admin_api_key",
+        GHOST_API_URL: "<ghost-admin-api-url>",
+        GHOST_ADMIN_API_KEY: "<ghost-admin-api-key>",
         GHOST_API_VERSION: "v5.0",
       },
     },
@@ -665,9 +674,11 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     title: "iTerm",
     description:
       "A Model Context Protocol server that provides access to your iTerm session.",
+    isOfficial: false,
     icon: "iterm.svg",
     homepage: "https://github.com/ferrislucas/iterm-mcp",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "iterm-mcp"],
     },
@@ -677,17 +688,16 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     title: "Lightdash",
     description:
       "This server provides MCP-compatible access to Lightdash's API, allowing AI assistants to interact with your Lightdash data through a standardized interface.",
-    icon: {
-      source: "lightdash.svg",
-      tintColor: Color.PrimaryText,
-    },
+    isOfficial: false,
+    icon: "lightdash.svg",
     homepage: "https://github.com/syucream/lightdash-mcp-server",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "npx",
       args: ["-y", "lightdash-mcp-server"],
       env: {
-        LIGHTDASH_API_KEY: "YOUR_API_KEY_HERE",
-        LIGHTDASH_API_URL: "https://<your base url>",
+        LIGHTDASH_API_KEY: "<lightdash-api-key>",
+        LIGHTDASH_API_URL: "<lightdash-api-url>",
       },
     },
   },
@@ -696,15 +706,42 @@ const COMMUNITY_ENTRIES: RaycastRegistryEntry[] = [
     title: "Monday",
     description:
       "MCP Server for monday.com, enabling MCP clients to interact with Monday.com boards, items, updates, and documents.",
+    isOfficial: false,
     icon: "monday.svg",
     homepage: "https://github.com/sakce/mcp-server-monday",
-    configuration: {
+    transport: {
+      type: "stdio",
       command: "uvx",
       args: ["mcp-server-monday"],
       env: {
-        MONDAY_API_KEY: "your-monday-api-key",
-        MONDAY_WORKSPACE_NAME: "your-monday-workspace-name",
+        MONDAY_API_KEY: "<monday-api-key>",
+        MONDAY_WORKSPACE_NAME: "<monday-workspace-name>",
       },
+    },
+  },
+  {
+    name: "fetch",
+    title: "Fetch",
+    description:
+      "A Model Context Protocol server that provides web content fetching capabilities. This server enables LLMs to retrieve and process content from web pages, converting HTML to markdown for easier consumption.",
+    homepage:
+      "https://github.com/modelcontextprotocol/servers/tree/main/src/fetch",
+    transport: {
+      type: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    },
+  },
+  {
+    name: "hackernews",
+    title: "Hackernews",
+    description:
+      "A Model Context Protocol (MCP) server that provides tools for fetching information from Hacker News.",
+    homepage: "https://github.com/erithwik/mcp-hn",
+    transport: {
+      type: "stdio",
+      command: "uvx",
+      args: ["--from", "git+https://github.com/erithwik/mcp-hn", "mcp-hn"],
     },
   },
 ];
