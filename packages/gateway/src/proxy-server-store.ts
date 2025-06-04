@@ -119,26 +119,11 @@ export class ProxyServerStore {
     server: ProxyTargetAttributes,
   ): Promise<ProxyServer> {
     const proxy = this.get(proxyId);
-    // TODO:
-    //   - Do not recreate the proxy server, just update the server
-    //   - After updating, call proxy.sendToolListChanged(); (also add necessary capability to server definition)
-    //   - At the moment (22/05/2025), neither Claude nor Cursor seem to support this so leaving it like this for now
 
-    if (
-      proxy.attributes.servers.some(
-        (s) => s.name.toLocaleLowerCase() === server.name.toLocaleLowerCase(),
-      )
-    ) {
-      throw new AppError(
-        ErrorCode.BAD_REQUEST,
-        `Server '${server.name}' already exists in proxy '${proxyId}'`,
-      );
-    }
+    await proxy.addTarget(server, { throwOnError: true });
+    await this.db.updateProxy(proxyId, { servers: proxy.attributes.servers });
 
-    const updatedProxy = await this.update(proxyId, {
-      servers: [...proxy.attributes.servers, server],
-    });
-    return updatedProxy;
+    return proxy;
   }
 
   public async removeServer(
@@ -146,24 +131,11 @@ export class ProxyServerStore {
     serverName: string,
   ): Promise<ProxyServer> {
     const proxy = this.get(proxyId);
-    // TODO: don't re-create the proxy server, just update the servers - same as addServer
-    if (
-      !proxy.attributes.servers.some(
-        (s) => s.name.toLowerCase() === serverName.toLowerCase(),
-      )
-    ) {
-      throw new AppError(
-        ErrorCode.BAD_REQUEST,
-        `Server '${serverName}' not found in proxy '${proxyId}'`,
-      );
-    }
 
-    const updatedProxy = await this.update(proxyId, {
-      servers: proxy.attributes.servers.filter(
-        (s) => s.name.toLowerCase() !== serverName.toLowerCase(),
-      ),
-    });
-    return updatedProxy;
+    await proxy.removeTarget(serverName);
+    await this.db.updateProxy(proxyId, { servers: proxy.attributes.servers });
+
+    return proxy;
   }
 
   public async update(
@@ -171,21 +143,13 @@ export class ProxyServerStore {
     attributes: Partial<{
       name: string;
       description: string;
-      servers: ProxyTargetAttributes[];
     }>,
   ) {
     const proxy = this.get(proxyId);
-    await proxy.close();
-    const updatedProxyEntry = await this.db.updateProxy(proxyId, attributes);
-    const updatedProxy = new ProxyServer({
-      id: proxyId,
-      name: updatedProxyEntry.name,
-      description: updatedProxyEntry.description ?? undefined,
-      servers: updatedProxyEntry.servers ?? [],
-    });
-    await updatedProxy.connectTargets();
-    this.proxyServers.set(proxyId, updatedProxy);
-    logger.info({ message: `Updated proxy`, proxyId });
-    return updatedProxy;
+
+    await proxy.update(attributes);
+    await this.db.updateProxy(proxyId, attributes);
+
+    return proxy;
   }
 }
