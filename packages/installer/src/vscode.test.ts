@@ -78,7 +78,7 @@ describe("VSCodeInstaller", () => {
 
     expect(servers).toEqual([
       {
-        name: "test-server",
+        name: "director__test-server",
         url: "https://example.com/test-server/sse",
       },
     ]);
