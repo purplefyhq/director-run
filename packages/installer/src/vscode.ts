@@ -14,7 +14,7 @@ import {
   sleep,
 } from "@director.run/utilities/os";
 import { restartApp } from "@director.run/utilities/os";
-import { z } from "zod";
+import { AbstractInstaller, type Installable } from "./types";
 
 const VSCODE_COMMAND = "code";
 const VSCODE_CONFIG_PATH = path.join(
@@ -26,11 +26,12 @@ export const VSCODE_CONFIG_KEY_PREFIX = "director__";
 
 const logger = getLogger("installer/vscode");
 
-export class VSCodeInstaller {
+export class VSCodeInstaller extends AbstractInstaller {
   private config: VSCodeConfig;
   public readonly configPath: string;
 
   private constructor(params: { configPath: string; config: VSCodeConfig }) {
+    super();
     this.configPath = params.configPath;
     this.config = params.config;
   }
@@ -44,15 +45,19 @@ export class VSCodeInstaller {
       );
     }
 
-    let config: Partial<VSCodeConfig>;
+    let config: VSCodeConfig;
 
     if (!isVSCodeConfigPresent()) {
       logger.info(
         `VSCode config file not found at ${configPath}, creating new one`,
       );
-      config = {};
+      config = {
+        mcp: {
+          servers: {},
+        },
+      };
     } else {
-      config = await readJSONFile<Partial<VSCodeConfig>>(configPath);
+      config = await readJSONFile<VSCodeConfig>(configPath);
     }
 
     // Initialize mcp object if it doesn't exist
@@ -64,7 +69,7 @@ export class VSCodeInstaller {
 
     const installer = new VSCodeInstaller({
       configPath,
-      config: VSCodeConfigSchema.parse(config),
+      config,
     });
 
     // Create the file if it doesn't exist
@@ -92,7 +97,7 @@ export class VSCodeInstaller {
     await this.updateConfig(newConfig);
   }
 
-  public async install(entry: VSCodeServerEntry) {
+  public async install(entry: Installable) {
     if (this.isInstalled(entry.name)) {
       throw new AppError(
         ErrorCode.BAD_REQUEST,
@@ -141,19 +146,11 @@ export class VSCodeInstaller {
   public async purge() {
     logger.info("purging vscode config");
     const newConfig = { ...this.config };
-    // Only remove director-managed servers
-    const filteredServers: Record<string, VSCodeMCPServer> = {};
-    Object.entries(newConfig.mcp.servers).forEach(([name, server]) => {
-      if (!name.startsWith(VSCODE_CONFIG_KEY_PREFIX)) {
-        filteredServers[name] = server;
-      }
-    });
-    newConfig.mcp.servers = filteredServers;
+    newConfig.mcp.servers = {};
     await this.updateConfig(newConfig);
   }
 
   private async updateConfig(newConfig: VSCodeConfig) {
-    this.config = VSCodeConfigSchema.parse(newConfig);
     logger.info(`writing config to ${this.configPath}`);
 
     // Ensure the directory exists
@@ -161,34 +158,16 @@ export class VSCodeInstaller {
     await fs.promises.mkdir(configDir, { recursive: true });
 
     await writeJSONFile(this.configPath, this.config);
+    this.config = newConfig;
   }
 }
 
 const createKey = (name: string) => `${VSCODE_CONFIG_KEY_PREFIX}${name}`;
 
-export const VSCodeMCPServerSchema = z.object({
-  url: z.string().url().describe("The SSE endpoint URL for the MCP server"),
-});
-
-export const VSCodeMCPConfigSchema = z.object({
-  servers: z
-    .record(z.string(), VSCodeMCPServerSchema)
-    .describe("Map of MCP server configurations"),
-});
-
-export const VSCodeConfigSchema = z
-  .object({
-    mcp: VSCodeMCPConfigSchema.describe("MCP configuration for VSCode"),
-    // Allow other settings to exist in the config
-  })
-  .passthrough();
-
-export type VSCodeMCPServer = z.infer<typeof VSCodeMCPServerSchema>;
-export type VSCodeMCPConfig = z.infer<typeof VSCodeMCPConfigSchema>;
-export type VSCodeConfig = z.infer<typeof VSCodeConfigSchema>;
-export type VSCodeServerEntry = {
-  name: string;
-  url: string;
+export type VSCodeConfig = {
+  mcp: {
+    servers: Record<string, { url: string }>;
+  };
 };
 
 export function isVSCodeInstalled(): boolean {
