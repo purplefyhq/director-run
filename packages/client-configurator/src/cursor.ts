@@ -13,16 +13,16 @@ import {
   sleep,
 } from "@director.run/utilities/os";
 import { restartApp } from "@director.run/utilities/os";
-import { AbstractInstaller } from "./types";
+import { AbstractConfigurator } from "./types";
 
 const CURSOR_COMMAND = "cursor";
 const CURSOR_CONFIG_PATH = path.join(os.homedir(), ".cursor/mcp.json");
 
 export const CURSOR_CONFIG_KEY_PREFIX = "director__";
 
-const logger = getLogger("installer/cursor");
+const logger = getLogger("client-configurator/cursor");
 
-export class CursorInstaller extends AbstractInstaller {
+export class CursorInstaller extends AbstractConfigurator {
   private config: CursorConfig;
   public readonly configPath: string;
 
@@ -114,7 +114,7 @@ export class CursorInstaller extends AbstractInstaller {
     await openFileInCode(this.configPath);
   }
 
-  public async purge() {
+  public async reset() {
     logger.info("purging cursor config");
     const newConfig = { ...this.config };
     newConfig.mcpServers = {};
@@ -122,8 +122,12 @@ export class CursorInstaller extends AbstractInstaller {
   }
 
   private async updateConfig(newConfig: CursorConfig) {
+    // if (_.isEqual(this.config, newConfig)) {
+    //   logger.info("no changes, skipping update");
+    //   return;
+    // }
     logger.info(`writing config to ${this.configPath}`);
-    await writeJSONFile(this.configPath, this.config);
+    await writeJSONFile(this.configPath, newConfig);
     this.config = newConfig;
   }
 }

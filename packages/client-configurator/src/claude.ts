@@ -12,7 +12,7 @@ import {
   restartApp,
 } from "@director.run/utilities/os";
 import { z } from "zod";
-import { AbstractInstaller } from "./types";
+import { AbstractConfigurator } from "./types";
 
 export const CLAUDE_COMMAND = "claude";
 export const CLAUDE_CONFIG_PATH = path.join(
@@ -21,9 +21,9 @@ export const CLAUDE_CONFIG_PATH = path.join(
 );
 export const CLAUDE_CONFIG_KEY_PREFIX = "director__";
 
-const logger = getLogger("installer/claude");
+const logger = getLogger("client-configurator/claude");
 
-export class ClaudeInstaller extends AbstractInstaller {
+export class ClaudeInstaller extends AbstractConfigurator {
   private config: ClaudeConfig;
   public readonly configPath: string;
 
@@ -93,7 +93,7 @@ export class ClaudeInstaller extends AbstractInstaller {
     await this.updateConfig(newConfig);
   }
 
-  public async purge() {
+  public async reset() {
     logger.info("purging claude config");
     const newConfig = { ...this.config };
     newConfig.mcpServers = {};
@@ -106,7 +106,7 @@ export class ClaudeInstaller extends AbstractInstaller {
       .filter(([name]) => name.startsWith(CLAUDE_CONFIG_KEY_PREFIX))
       .map(([name, transport]) => ({
         name,
-        url: transport.args[2],
+        url: transport.args[3],
       }));
   }
 
@@ -130,6 +130,10 @@ export class ClaudeInstaller extends AbstractInstaller {
   }
 
   private async updateConfig(newConfig: ClaudeConfig) {
+    // if (_.isEqual(this.config, newConfig)) {
+    //   logger.info("no changes, skipping update");
+    //   return;
+    // }
     this.config = ClaudeConfigSchema.parse(newConfig);
     logger.info(`writing config to ${this.configPath}`);
     await writeJSONFile(this.configPath, this.config);

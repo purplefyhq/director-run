@@ -14,7 +14,7 @@ import {
   sleep,
 } from "@director.run/utilities/os";
 import { restartApp } from "@director.run/utilities/os";
-import { AbstractInstaller, type Installable } from "./types";
+import { AbstractConfigurator, type Installable } from "./types";
 
 const VSCODE_COMMAND = "code";
 const VSCODE_CONFIG_PATH = path.join(
@@ -24,9 +24,9 @@ const VSCODE_CONFIG_PATH = path.join(
 
 export const VSCODE_CONFIG_KEY_PREFIX = "director__";
 
-const logger = getLogger("installer/vscode");
+const logger = getLogger("client-configurator/vscode");
 
-export class VSCodeInstaller extends AbstractInstaller {
+export class VSCodeInstaller extends AbstractConfigurator {
   private config: VSCodeConfig;
   public readonly configPath: string;
 
@@ -143,7 +143,7 @@ export class VSCodeInstaller extends AbstractInstaller {
     await openFileInCode(this.configPath);
   }
 
-  public async purge() {
+  public async reset() {
     logger.info("purging vscode config");
     const newConfig = { ...this.config };
     newConfig.mcp.servers = {};
@@ -151,6 +151,11 @@ export class VSCodeInstaller extends AbstractInstaller {
   }
 
   private async updateConfig(newConfig: VSCodeConfig) {
+    // if (_.isEqual(this.config, newConfig)) {
+    //   logger.info("no changes, skipping update");
+    //   return;
+    // }
+
     logger.info(`writing config to ${this.configPath}`);
 
     // Ensure the directory exists

@@ -1,10 +1,17 @@
 import {
+  ConfiguratorTarget,
+  getConfigurator,
+  resetAllClients,
+} from "@director.run/client-configurator/index";
+import {
   DirectorCommand,
   makeOption,
 } from "@director.run/utilities/cli/director-command";
-import { actionWithErrorHandler } from "@director.run/utilities/cli/index";
+import {
+  actionWithErrorHandler,
+  makeTable,
+} from "@director.run/utilities/cli/index";
 import { isDevelopment } from "@director.run/utilities/env";
-import { gatewayClient } from "../client";
 
 export function registerClientCommands(program: DirectorCommand): void {
   if (!isDevelopment()) {
@@ -18,21 +25,22 @@ export function registerClientCommands(program: DirectorCommand): void {
 
   command
     .debugCommand("ls")
+    .alias("list")
     .description("List servers in the client config")
     .addOption(targetOption)
     .action(
-      actionWithErrorHandler(async (target: string) => {
-        if (target === "claude") {
-          const result = await gatewayClient.installer.claude.list.query();
-          console.log(result);
-        } else if (target === "cursor") {
-          const result = await gatewayClient.installer.cursor.list.query();
-          console.log(result);
-        } else if (target === "vscode") {
-          const result = await gatewayClient.installer.vscode.list.query();
-          console.log(result);
-        }
-      }),
+      actionWithErrorHandler(
+        async (options: { target: ConfiguratorTarget }) => {
+          const installer = await getConfigurator(options.target);
+          const servers = await installer.list();
+          const table = makeTable(["name", "url"]);
+
+          table.push(
+            ...servers.map((server) => [server.name, server.url || "--"]),
+          );
+          console.log(table.toString());
+        },
+      ),
     );
 
   command
@@ -40,30 +48,35 @@ export function registerClientCommands(program: DirectorCommand): void {
     .description("Restart the MCP client")
     .addOption(targetOption)
     .action(
-      actionWithErrorHandler(async (options: { target: string }) => {
-        if (options.target === "claude") {
-          console.log(await gatewayClient.installer.claude.restart.mutate());
-        } else if (options.target === "cursor") {
-          console.log(await gatewayClient.installer.cursor.restart.mutate());
-        } else if (options.target === "vscode") {
-          console.log(await gatewayClient.installer.vscode.restart.mutate());
-        }
-      }),
+      actionWithErrorHandler(
+        async (options: { target: ConfiguratorTarget }) => {
+          const installer = await getConfigurator(options.target);
+          const result = await installer.restart();
+          console.log(result);
+        },
+      ),
     );
 
   command
     .debugCommand("reset")
-    .description("Purge all claude MCP servers")
+    .description("Delete all servers from the client config")
     .addOption(targetOption)
     .action(
-      actionWithErrorHandler(async (options: { target: string }) => {
-        if (options.target === "claude") {
-          console.log(await gatewayClient.installer.claude.purge.mutate());
-        } else if (options.target === "cursor") {
-          console.log(await gatewayClient.installer.cursor.purge.mutate());
-        } else if (options.target === "vscode") {
-          console.log(await gatewayClient.installer.vscode.purge.mutate());
-        }
+      actionWithErrorHandler(
+        async (options: { target: ConfiguratorTarget }) => {
+          const installer = await getConfigurator(options.target);
+          const result = await installer.reset();
+          console.log(result);
+        },
+      ),
+    );
+
+  command
+    .debugCommand("reset-all")
+    .description("Delete all servers from all clients")
+    .action(
+      actionWithErrorHandler(async () => {
+        await resetAllClients();
       }),
     );
 
@@ -72,15 +85,13 @@ export function registerClientCommands(program: DirectorCommand): void {
     .description("Open claude config file")
     .addOption(targetOption)
     .action(
-      actionWithErrorHandler(async (options: { target: string }) => {
-        if (options.target === "claude") {
-          await gatewayClient.installer.claude.config.query();
-        } else if (options.target === "cursor") {
-          await gatewayClient.installer.cursor.config.query();
-        } else if (options.target === "vscode") {
-          await gatewayClient.installer.vscode.config.query();
-        }
-      }),
+      actionWithErrorHandler(
+        async (options: { target: ConfiguratorTarget }) => {
+          const installer = await getConfigurator(options.target);
+          const result = await installer.openConfig();
+          console.log(result);
+        },
+      ),
     );
 
   program.addCommand(command);

@@ -1,4 +1,4 @@
-export abstract class AbstractInstaller {
+export abstract class AbstractConfigurator {
   public abstract install(attributes: {
     name: string;
     url: string;
@@ -9,7 +9,7 @@ export abstract class AbstractInstaller {
   public abstract isInstalled(name: string): boolean;
   public abstract restart(): Promise<void>;
   public abstract reload(name: string): Promise<void>;
-  public abstract purge(): Promise<void>;
+  public abstract reset(): Promise<void>;
 }
 
 export type Installable = {

@@ -1,9 +1,9 @@
 import {
-  getSSEPathForProxy,
-  getStreamablePathForProxy,
-} from "@director.run/gateway/helpers";
+  type ConfiguratorTarget,
+  getConfigurator,
+  resetAllClients,
+} from "@director.run/client-configurator/index";
 import { proxyHTTPToStdio } from "@director.run/mcp/transport";
-import { blue, whiteBold } from "@director.run/utilities/cli/colors";
 import {
   DirectorCommand,
   makeOption,
@@ -14,6 +14,8 @@ import { joinURL } from "@director.run/utilities/url";
 import { gatewayClient } from "../client";
 import { env } from "../env";
 import { registerAddCommand } from "./core/add";
+import { registerConnectCommand } from "./core/connect";
+import { registerEnvCommand } from "./core/env";
 import { registerQuickstartCommand } from "./core/quickstart";
 import { registerRemoveCommand } from "./core/remove";
 import { registerServeCommand } from "./core/serve";
@@ -26,6 +28,7 @@ export function registerCoreCommands(program: DirectorCommand): void {
 
   program
     .command("ls")
+    .alias("list")
     .description("List proxies")
     .action(
       actionWithErrorHandler(async () => {
@@ -110,64 +113,7 @@ export function registerCoreCommands(program: DirectorCommand): void {
       }),
     );
 
-  program
-    .command("connect <proxyId>")
-    .description("connect a proxy to a MCP client")
-    .addOption(
-      makeOption({
-        flags: "-t,--target <target>",
-        description: "target client",
-        choices: ["claude", "cursor", "vscode"],
-      }),
-    )
-    .action(
-      actionWithErrorHandler(
-        async (
-          proxyId: string,
-          options: { target: "claude" | "cursor" | "vscode" },
-        ) => {
-          if (options.target) {
-            const result = await gatewayClient.installer.byProxy.install.mutate(
-              {
-                proxyId,
-                baseUrl: env.GATEWAY_URL,
-                client: options.target,
-              },
-            );
-            console.log(result);
-          } else {
-            console.log();
-            console.log(
-              blue("--target not provided, manual connection details:"),
-            );
-            console.log();
-            const proxy = await gatewayClient.store.get.query({ proxyId });
-            const baseUrl = env.GATEWAY_URL;
-            const sseURL = joinURL(baseUrl, getSSEPathForProxy(proxy.id));
-            const streamableURL = joinURL(
-              baseUrl,
-              getStreamablePathForProxy(proxy.id),
-            );
-
-            const stdioCommand = {
-              command: "npx",
-              args: ["-y", "@director.run/cli", "http2stdio", streamableURL],
-              env: {
-                LOG_LEVEL: "silent",
-              },
-            };
-
-            console.log(whiteBold("SSE URL:") + " " + sseURL);
-            console.log(whiteBold("Streamable URL:") + " " + streamableURL);
-            console.log(
-              whiteBold("Stdio Command:"),
-              JSON.stringify(stdioCommand, null, 2),
-            );
-            console.log();
-          }
-        },
-      ),
-    );
+  registerConnectCommand(program);
 
   program
     .command("disconnect <proxyId>")
@@ -181,16 +127,11 @@ export function registerCoreCommands(program: DirectorCommand): void {
     )
     .action(
       actionWithErrorHandler(
-        async (
-          proxyId: string,
-          options: { target: "claude" | "cursor" | "vscode" },
-        ) => {
-          console.log(
-            await gatewayClient.installer.byProxy.uninstall.mutate({
-              proxyId,
-              client: options.target,
-            }),
-          );
+        async (proxyId: string, options: { target: ConfiguratorTarget }) => {
+          const proxy = await gatewayClient.store.get.query({ proxyId });
+          const installer = await getConfigurator(options.target);
+          const result = await installer.uninstall(proxy.id);
+          console.log(result);
         },
       ),
     );
@@ -207,21 +148,17 @@ export function registerCoreCommands(program: DirectorCommand): void {
       await proxyHTTPToStdio(url);
     });
 
-  program
-    .command("env")
-    .description("Print environment variables")
-    .action(
-      actionWithErrorHandler(() => {
-        console.log(`env`, env);
-      }),
-    );
+  registerEnvCommand(program);
 
   program
     .debugCommand("reset")
-    .description("Delete proxies & clear the config file")
+    .description("Delete proxies, clear the config file, and reset all clients")
     .action(
       actionWithErrorHandler(async ({ target }) => {
+        console.log("resetting service");
         await gatewayClient.store.purge.mutate();
+        console.log("resetting clients");
+        await resetAllClients();
       }),
     );
 }
