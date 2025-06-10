@@ -1,16 +1,13 @@
 {
-  "name": "@director.run/cli",
+  "name": "@director.run/sandbox",
   "type": "module",
-  "version": "0.0.22",
-  "files": ["dist", "README.md"],
-  "bin": {
-    "director": "./dist/cli.js"
-  },
+  "files": ["dist", "ansible", "README.md"],
+  "version": "0.0.1",
   "scripts": {
     "lint": "biome check .",
     "format": "biome format --write .",
     "clean": "rm -rf .turbo dist/*",
-    "test": "bun run vitest  --fileParallelism=false",
+    "test": "echo 'no tests'",
     "cli": "NODE_ENV=development bun run bin/cli.ts",
     "typecheck": "tsc --noEmit",
     "build": "bun build --production --target=node bin/cli.ts --outdir dist",
@@ -22,14 +19,8 @@
     "typescript": "^5"
   },
   "devDependencies": {
-    "@inquirer/prompts": "^7.5.2",
-    "type-fest": "^4.40.0",
-    "@director.run/gateway": "workspace:*",
-    "@director.run/mcp": "workspace:*",
     "@director.run/utilities": "workspace:*",
-    "chalk": "^5.4.1",
-    "cli-table3": "^0.6.5",
-    "commander": "^13.1.0",
-    "superjson": "^2.2.2"
+    "commander": "^14.0.0",
+    "zx": "^8.5.4"
   }
 }
