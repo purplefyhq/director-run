@@ -33,8 +33,8 @@ import { siteConfig } from "@/site-config";
 
 import { Button, ButtonIcon, ButtonLabel } from "@/components/ui/button";
 
-import heroImageMobile from "../public/images/hero-image--mobile.png";
-import heroImage from "../public/images/hero-image.png";
+import heroImageMobile from "./hero-image--mobile.png";
+import heroImage from "./hero-image.png";
 
 export default function IndexPage() {
   return (
@@ -94,13 +94,13 @@ export default function IndexPage() {
             <div className="relative flex flex-col items-center rounded-2xl bg-accent">
               <Image
                 src={heroImage}
-                className="hidden md:block relative z-10"
+                className="relative z-10 hidden md:block"
                 alt="Director"
                 priority
               />
               <Image
                 src={heroImageMobile}
-                className="block md:hidden max-w-sm relative z-10"
+                className="relative z-10 block max-w-sm md:hidden"
                 alt="Director"
                 priority
               />
