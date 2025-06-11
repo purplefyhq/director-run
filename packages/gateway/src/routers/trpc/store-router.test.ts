@@ -81,4 +81,77 @@ describe("Store Router", () => {
 
     expect(await harness.client.store.getAll.query()).toHaveLength(0);
   });
+
+  describe("addServer", () => {
+    it("should fail if it can't connect a url", async () => {
+      await harness.purge();
+      const testProxy = await harness.client.store.create.mutate({
+        name: "Test Proxy",
+        servers: [],
+      });
+
+      await expect(
+        harness.client.store.addServer.mutate({
+          proxyId: testProxy.id,
+          server: {
+            name: "echo",
+            transport: {
+              type: "http",
+              url: `http://localhost/not_existing_server`,
+            },
+          },
+        }),
+      ).rejects.toThrow(
+        `[echo] failed to connect to http://localhost/not_existing_server`,
+      );
+    });
+
+    it("should fail if it can't connect to stdio", async () => {
+      await harness.purge();
+      const testProxy = await harness.client.store.create.mutate({
+        name: "Test Proxy",
+        servers: [],
+      });
+
+      await expect(
+        harness.client.store.addServer.mutate({
+          proxyId: testProxy.id,
+          server: {
+            name: "echo",
+            transport: {
+              type: "stdio",
+              command: "not_existing_command",
+              args: [],
+            },
+          },
+        }),
+      ).rejects.toThrow(
+        `[echo] command not found: 'not_existing_command'. Please make sure it is installed and available in your $PATH.`,
+      );
+    });
+
+    it("should bubble up command errors properly", async () => {
+      await harness.purge();
+      const testProxy = await harness.client.store.create.mutate({
+        name: "Test Proxy",
+        servers: [],
+      });
+
+      await expect(
+        harness.client.store.addServer.mutate({
+          proxyId: testProxy.id,
+          server: {
+            name: "echo",
+            transport: {
+              type: "stdio",
+              command: "ls",
+              args: ["not_existing_dir"],
+            },
+          },
+        }),
+      ).rejects.toThrow(
+        `[echo] failed to run 'ls not_existing_dir'. Please check the logs for more details.`,
+      );
+    });
+  });
 });

@@ -1,13 +1,12 @@
 import { AppError, ErrorCode } from "@director.run/utilities/error";
 import { getLogger } from "@director.run/utilities/logger";
-// import { sleep } from "@director.run/utilities/os";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
-// import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import packageJson from "../package.json";
 
 // const CONNECT_RETRY_INTERVAL = 2500;
@@ -50,8 +49,9 @@ export class SimpleClient extends Client {
       } catch (e) {
         throw new AppError(
           ErrorCode.CONNECTION_REFUSED,
-          "Failed to connect to server",
+          `[${this.name}] failed to connect to ${url}`,
           {
+            targetName: this.name,
             url,
           },
         );
@@ -64,7 +64,35 @@ export class SimpleClient extends Client {
     args: string[],
     env?: Record<string, string>,
   ) {
-    await this.connect(new StdioClientTransport({ command, args, env }));
+    try {
+      await this.connect(new StdioClientTransport({ command, args, env }));
+    } catch (e) {
+      if (e instanceof Error && (e as ErrnoException).code === "ENOENT") {
+        throw new AppError(
+          ErrorCode.CONNECTION_REFUSED,
+          `[${this.name}] command not found: '${command}'. Please make sure it is installed and available in your $PATH.`,
+          {
+            targetName: this.name,
+            command,
+            args,
+            env,
+          },
+        );
+      } else if (e instanceof McpError) {
+        throw new AppError(
+          ErrorCode.CONNECTION_REFUSED,
+          `[${this.name}] failed to run '${[command, ...args].join(" ")}'. Please check the logs for more details.`,
+          {
+            targetName: this.name,
+            command,
+            args,
+            env,
+          },
+        );
+      } else {
+        throw e;
+      }
+    }
   }
 
   public static async createAndConnectToServer(
