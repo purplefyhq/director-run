@@ -2,8 +2,7 @@ import os from "node:os";
 import path from "node:path";
 import { isTest } from "@director.run/utilities/env";
 import { AppError, ErrorCode } from "@director.run/utilities/error";
-import { readJSONFile, writeJSONFile } from "@director.run/utilities/json";
-import { getLogger } from "@director.run/utilities/logger";
+import { writeJSONFile } from "@director.run/utilities/json";
 import {
   App,
   isAppInstalled,
@@ -14,60 +13,53 @@ import {
 import { z } from "zod";
 import { AbstractConfigurator } from "./types";
 
-export const CLAUDE_COMMAND = "claude";
 export const CLAUDE_CONFIG_PATH = path.join(
   os.homedir(),
   "Library/Application Support/Claude/claude_desktop_config.json",
 );
-export const CLAUDE_CONFIG_KEY_PREFIX = "director__";
 
-const logger = getLogger("client-configurator/claude");
-
-export class ClaudeInstaller extends AbstractConfigurator {
-  private config: ClaudeConfig;
-  public readonly configPath: string;
-
-  private constructor(params: { configPath: string; config: ClaudeConfig }) {
-    super();
-    this.configPath = params.configPath;
-    this.config = params.config;
+export class ClaudeInstaller extends AbstractConfigurator<ClaudeConfig> {
+  public async isClientPresent() {
+    return await isAppInstalled(App.CLAUDE);
   }
 
-  public static async create(configPath: string = CLAUDE_CONFIG_PATH) {
-    logger.info(`reading config from ${configPath}`);
-    if (!isAppInstalled(App.CLAUDE)) {
-      throw new AppError(
-        ErrorCode.NOT_FOUND,
-        `Claude desktop app is not installed command: ${CLAUDE_COMMAND}`,
-      );
-    }
-    if (!isClaudeConfigPresent()) {
-      throw new AppError(
-        ErrorCode.NOT_FOUND,
-        `Claude config file not found at ${configPath}`,
-      );
-    }
-    const config = await readJSONFile<ClaudeConfig>(configPath);
-    return new ClaudeInstaller({
-      configPath,
-      config: ClaudeConfigSchema.parse(config),
+  public async isClientConfigPresent() {
+    return await isFilePresent(this.configPath);
+  }
+
+  public constructor(params: { configPath?: string }) {
+    super({
+      configPath: params.configPath || CLAUDE_CONFIG_PATH,
+      name: "claude",
     });
   }
 
-  public isInstalled(name: string) {
-    return this.config.mcpServers[createKey(name)] !== undefined;
+  public async isInstalled(name: string) {
+    if (
+      !(await this.isClientPresent()) ||
+      !(await this.isClientConfigPresent())
+    ) {
+      return false;
+    }
+    await this.initialize();
+    return (
+      this.config?.mcpServers?.[this.createServerConfigKey(name)] !== undefined
+    );
   }
 
   public async uninstall(name: string) {
+    await this.initialize();
     if (!this.isInstalled(name)) {
       throw new AppError(
         ErrorCode.NOT_FOUND,
         `server '${name}' is not installed`,
       );
     }
-    logger.info(`uninstalling ${name}`);
-    const newConfig = { ...this.config };
-    delete newConfig.mcpServers[createKey(name)];
+    this.logger.info(`uninstalling ${name}`);
+    const newConfig: ClaudeConfig = {
+      mcpServers: { ...this.config?.mcpServers },
+    };
+    delete newConfig.mcpServers?.[this.createServerConfigKey(name)];
     await this.updateConfig(newConfig);
   }
 
@@ -75,15 +67,18 @@ export class ClaudeInstaller extends AbstractConfigurator {
     name: string;
     url: string;
   }) {
-    if (this.isInstalled(attributes.name)) {
+    await this.initialize();
+    if (await this.isInstalled(attributes.name)) {
       throw new AppError(
         ErrorCode.BAD_REQUEST,
         `server '${attributes.name}' is already installed`,
       );
     }
-    logger.info(`installing ${attributes.name}`);
-    const newConfig = { ...this.config };
-    newConfig.mcpServers[createKey(attributes.name)] = {
+    this.logger.info(`installing ${attributes.name}`);
+    const newConfig: ClaudeConfig = {
+      mcpServers: { ...this.config?.mcpServers },
+    };
+    newConfig.mcpServers[this.createServerConfigKey(attributes.name)] = {
       command: "npx",
       args: ["-y", "@director.run/cli", "http2stdio", attributes.url],
       env: {
@@ -94,16 +89,20 @@ export class ClaudeInstaller extends AbstractConfigurator {
   }
 
   public async reset() {
-    logger.info("purging claude config");
-    const newConfig = { ...this.config };
+    await this.initialize();
+    this.logger.info("purging claude config");
+    const newConfig: ClaudeConfig = {
+      mcpServers: { ...this.config?.mcpServers },
+    };
     newConfig.mcpServers = {};
     await this.updateConfig(newConfig);
   }
 
   public async list() {
-    logger.info("listing servers");
-    return Object.entries(this.config.mcpServers)
-      .filter(([name]) => name.startsWith(CLAUDE_CONFIG_KEY_PREFIX))
+    await this.initialize();
+    this.logger.info("listing servers");
+    return Object.entries(this.config?.mcpServers ?? {})
+      .filter(([name]) => this.isManagedConfigKey(name))
       .map(([name, transport]) => ({
         name,
         url: transport.args[3],
@@ -111,37 +110,35 @@ export class ClaudeInstaller extends AbstractConfigurator {
   }
 
   public async openConfig() {
-    logger.info("opening claude config");
+    this.logger.info("opening claude config");
     await openFileInCode(this.configPath);
   }
 
   public async restart() {
+    await this.initialize();
+
     if (!isTest()) {
-      logger.info("restarting claude");
+      this.logger.info("restarting claude");
       await restartApp(App.CLAUDE);
     } else {
-      logger.warn("skipping restart of claude in test environment");
+      this.logger.warn("skipping restart of claude in test environment");
     }
   }
 
   public async reload(name: string) {
-    logger.info(`reloading ${name}`);
+    await this.initialize();
+
+    this.logger.info(`reloading ${name}`);
     await this.restart();
   }
 
   private async updateConfig(newConfig: ClaudeConfig) {
-    // if (_.isEqual(this.config, newConfig)) {
-    //   logger.info("no changes, skipping update");
-    //   return;
-    // }
     this.config = ClaudeConfigSchema.parse(newConfig);
-    logger.info(`writing config to ${this.configPath}`);
+    this.logger.info(`writing config to ${this.configPath}`);
     await writeJSONFile(this.configPath, this.config);
     await this.restart();
   }
 }
-
-const createKey = (name: string) => `${CLAUDE_CONFIG_KEY_PREFIX}${name}`;
 
 export const ClaudeMCPServerSchema = z.object({
   command: z.string().describe('The command to execute (e.g., "bun", "node")'),
