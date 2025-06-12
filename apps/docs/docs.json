@@ -16,30 +16,23 @@
         "group": "Concepts",
         "pages": [
           "concepts/architecture",
-          "concepts/configuration",
+          "concepts/cli",
           "concepts/studio",
-          "concepts/registry"
+          "concepts/registry",
+          "concepts/configuration"
         ]
-      },
-      {
-        "group": "Deployment",
-        "pages": ["deployment/docker", "deployment/metal"]
-      },
-      {
-        "group": "Security",
-        "pages": ["security/isolation", "security/authentication"]
       },
       {
         "group": "SDK",
-        "pages": ["sdk/cli", "sdk/api", "sdk/plugins"]
+        "pages": ["sdk/gateway", "sdk/mcp", "sdk/client-configurator"]
+      },
+      {
+        "group": "Experimental",
+        "pages": ["experimental/docker", "experimental/sandboxing"]
       },
       {
         "group": "Project",
-        "pages": [
-          "project/changelog",
-          "project/roadmap",
-          "project/contributing"
-        ]
+        "pages": ["project/roadmap", "project/contributing"]
       }
     ]
   },
