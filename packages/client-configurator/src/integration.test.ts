@@ -1,5 +1,8 @@
+import { readJSONFile } from "@director.run/utilities/json";
 import { afterAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { ConfiguratorTarget } from ".";
+import type { ClaudeConfig } from "./claude";
+import type { CursorConfig } from "./cursor";
 import {
   createConfigFile,
   createInstallable,
@@ -7,6 +10,7 @@ import {
   deleteConfigFile,
   expectToThrowInitializtionErrors,
 } from "./test/fixtures";
+import type { VSCodeConfig } from "./vscode";
 
 [
   ConfiguratorTarget.Claude,
@@ -48,12 +52,29 @@ import {
     });
 
     describe("install", () => {
+      const installer = createTestInstaller(target);
       test("should be able to install a server", async () => {
         const installable = createInstallable();
-        const installer = createTestInstaller(target);
         expect(await installer.isInstalled(installable.name)).toBe(false);
         await installer.install(installable);
         expect(await installer.isInstalled(installable.name)).toBe(true);
+
+        const configFile = await readJSONFile(installer.configPath);
+        let servers: Record<string, unknown> = {};
+
+        switch (target) {
+          case ConfiguratorTarget.VSCode:
+            servers = (configFile as VSCodeConfig).mcp.servers;
+            break;
+          case ConfiguratorTarget.Claude:
+            servers = (configFile as ClaudeConfig).mcpServers;
+            break;
+          case ConfiguratorTarget.Cursor:
+            servers = (configFile as CursorConfig).mcpServers;
+            break;
+        }
+
+        expect(Object.keys(servers)).toContain(`director__${installable.name}`);
       });
 
       expectToThrowInitializtionErrors(target, (installer) =>

@@ -147,7 +147,7 @@ export class VSCodeInstaller extends AbstractConfigurator<VSCodeConfig> {
     const configDir = path.dirname(this.configPath);
     await fs.promises.mkdir(configDir, { recursive: true });
 
-    await writeJSONFile(this.configPath, this.config);
+    await writeJSONFile(this.configPath, newConfig);
     this.config = newConfig;
   }
 }
