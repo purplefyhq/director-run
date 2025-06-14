@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/empty-state";
 import * as List from "@/components/ui/list";
 import { ScrambleText } from "@/components/ui/scramble-text";
+import { SimpleMarkdown } from "./ui/markdown";
 
 function ListSkeletonItem() {
   return (
@@ -50,7 +51,9 @@ function ListItem({ link }: { link: LinkItem }) {
         <List.ListItemDetails>
           <List.ListItemTitle>{link.title}</List.ListItemTitle>
           {link.subtitle && (
-            <List.ListItemDescription>{link.subtitle}</List.ListItemDescription>
+            <List.ListItemDescription>
+              <SimpleMarkdown>{link.subtitle}</SimpleMarkdown>
+            </List.ListItemDescription>
           )}
         </List.ListItemDetails>
 
@@ -65,9 +68,10 @@ function ListItem({ link }: { link: LinkItem }) {
 interface ListOfLinksProps {
   links: LinkItem[];
   isLoading: boolean;
+  className?: string;
 }
 
-export function ListOfLinks({ links, isLoading }: ListOfLinksProps) {
+export function ListOfLinks({ links, isLoading, className }: ListOfLinksProps) {
   if (isLoading) {
     return (
       <div className="flex flex-col border-accent border-y-[0.5px] opacity-50">
@@ -88,7 +92,7 @@ export function ListOfLinks({ links, isLoading }: ListOfLinksProps) {
   }
 
   return (
-    <List.List>
+    <List.List className={className}>
       {links.map((it) => (
         <ListItem key={`li-${it.title}`} link={it} />
       ))}
