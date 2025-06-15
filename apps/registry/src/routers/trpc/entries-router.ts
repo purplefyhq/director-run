@@ -21,7 +21,7 @@ const parameterToZodSchema = (parameter: EntryParameter) => {
   }
 };
 
-export function interpolateParameters(
+export function substituteParameters(
   entry: Pick<RegistryEntry, "transport" | "parameters">,
   parameters: Record<string, string>,
 ): ProxyTransport {
@@ -44,15 +44,13 @@ export function interpolateParameters(
       }
 
       // Substitute the parameter into the transport command
-      if (parameter.scope === "env") {
-        Object.entries(env).forEach(([key, value]) => {
-          env[key] = value.replace(`<${parameter.name}>`, paramValue);
-        });
-      } else if (parameter.scope === "args") {
-        args = args.map((arg) =>
-          arg.replace(`<${parameter.name}>`, paramValue),
-        );
-      }
+      // Replace the parameter in the env object
+      Object.entries(env).forEach(([key, value]) => {
+        env[key] = value.replace(`<${parameter.name}>`, paramValue);
+      });
+
+      // Replace the parameter in the args array
+      args = args.map((arg) => arg.replace(`<${parameter.name}>`, paramValue));
     });
 
     return {
@@ -62,9 +60,27 @@ export function interpolateParameters(
       command: entry.transport.command,
     };
   } else {
+    const headers = entry.transport.headers ?? {};
+    entry.parameters?.forEach((parameter) => {
+      const paramValue = parameters[parameter.name];
+      const schema = parameterToZodSchema(parameter);
+
+      schema.parse(paramValue);
+
+      if (!paramValue) {
+        // Not a required parameter, so we can skip it
+        // Missing required parameters are handled by the zod schema
+        return;
+      }
+      Object.entries(headers).forEach(([key, value]) => {
+        headers[key] = value.replace(`<${parameter.name}>`, paramValue);
+      });
+    });
+
     return {
       type: "http",
       url: entry.transport.url,
+      headers,
     };
   }
 }
@@ -93,7 +109,7 @@ export function createEntriesRouter({ store }: { store: Store }) {
       )
       .query(async ({ input }) => {
         const entry = await store.entries.getEntryByName(input.entryName);
-        return interpolateParameters(entry, input.parameters ?? {});
+        return substituteParameters(entry, input.parameters ?? {});
       }),
 
     purge: protectedProcedure.input(z.object({})).mutation(async () => {
