@@ -1,12 +1,14 @@
-import { cn } from "@director.run/design/lib/cn";
 import { type VariantProps, cva } from "class-variance-authority";
 import { Slot } from "radix-ui";
 import type * as React from "react";
 
+import { cn } from "@director.run/design/lib/cn";
+
 const badgeVariants = cva(
   [
     "inline-flex shrink-0 select-none items-center justify-center gap-x-0 whitespace-nowrap rounded-md",
-    "font-medium font-mono tracking-[0.05em]",
+    "font-bold font-mono tracking-[0.05em]",
+    "[a&]:focus-visible",
   ],
   {
     variants: {
@@ -14,7 +16,9 @@ const badgeVariants = cva(
         primary: "bg-interactive-primary text-interactive-accent",
         accent: "bg-interactive-accent text-interactive-primary",
         secondary: "bg-interactive-secondary text-content-primary",
-        tertiary: "bg-transparent text-content-secondary",
+        tertiary:
+          "bg-transparent text-content-secondary [a&]:hover:bg-interactive-secondary",
+        inverse: "bg-base text-base-inverse",
         negative: "bg-sentiment-negative text-base-light",
         positive: "bg-sentiment-positive text-base-light",
         warning: "bg-sentiment-warning text-base-dark",
@@ -25,7 +29,7 @@ const badgeVariants = cva(
         lime: "bg-spruce text-lime dark:bg-lime dark:text-spruce",
       },
       size: {
-        sm: "h-5 px-[3px] text-[11px] leading-5",
+        sm: "h-5 px-0.5 text-[11px] leading-5",
         md: "h-6 px-[3px] text-[11px] leading-6",
       },
     },
@@ -79,9 +83,15 @@ interface BadgeIconProps {
 
 function BadgeIcon({ children, className }: BadgeIconProps) {
   return (
-    <Slot.Root className={cn("size-5 shrink-0", className)}>
-      {children}
-    </Slot.Root>
+    <div
+      className={cn(
+        "flex size-5 items-center justify-center",
+        "[&>svg]:size-4 [&>svg]:shrink-0",
+        className,
+      )}
+    >
+      <Slot.Root>{children}</Slot.Root>
+    </div>
   );
 }
 

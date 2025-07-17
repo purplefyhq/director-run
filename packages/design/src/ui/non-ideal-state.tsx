@@ -1,6 +1,7 @@
-import { cn } from "@director.run/design/lib/cn";
-import { Card } from "@director.run/design/ui/card";
 import type { ComponentProps } from "react";
+
+import { cn } from "@director.run/design/lib/cn";
+import { Card } from "./card";
 
 interface NonIdealStateProps extends ComponentProps<typeof Card> {
   asChild?: boolean;
@@ -43,7 +44,7 @@ export function NonIdealStateDescription({
   return (
     <p
       className={cn(
-        "text-[13px] text-content-secondary",
+        "max-w-[52ch] text-pretty text-center text-[13px] text-content-secondary leading-normal",
         "[&>a]:underline [&>a]:decoration-1 [&>a]:underline-offset-2",
         className,
       )}

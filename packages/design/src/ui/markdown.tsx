@@ -1,7 +1,8 @@
-import { cn } from "@director.run/design/lib/cn";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+
+import { cn } from "@director.run/design/lib/cn";
 
 export function SimpleMarkdown({ children }: { children: string }) {
   return (
@@ -28,13 +29,12 @@ export function SimpleMarkdown({ children }: { children: string }) {
   );
 }
 
-export function Markdown({
-  children,
-  className,
-}: {
+interface MarkdownProps extends React.ComponentProps<typeof ReactMarkdown> {
   children?: string;
   className?: string;
-}) {
+}
+
+export function Markdown({ children, className, components }: MarkdownProps) {
   return (
     <div className={cn("prose max-w-none", className)}>
       <ReactMarkdown
@@ -47,6 +47,8 @@ export function Markdown({
           summary: (props) => (
             <summary className="focus-visible">{props.children}</summary>
           ),
+          tr: (props) => <tr>{props.children}</tr>,
+          ...components,
         }}
         rehypePlugins={[rehypeRaw]}
         remarkPlugins={[remarkGfm]}
