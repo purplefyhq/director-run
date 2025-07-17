@@ -1,3 +1,4 @@
+import { AppError, ErrorCode } from "@director.run/utilities/error";
 import {
   type EntryParameter,
   type ProxyTransport,
@@ -7,9 +8,9 @@ import {
   toolSchema,
 } from "@director.run/utilities/schema";
 import { t } from "@director.run/utilities/trpc";
+import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import { z } from "zod";
 
-import { AppError, ErrorCode } from "@director.run/utilities/error";
 import { EntryStore } from "../../db/entries";
 import { entries } from "../../db/seed/entries";
 import { enrichEntries } from "../../lib/enrich-entries";
@@ -96,6 +97,7 @@ export const entriesRouter = createTRPCRouter({
       z.object({
         pageIndex: z.number().min(0),
         pageSize: z.number().min(1),
+        searchQuery: z.string().trim().optional(),
       }),
     )
     .query(({ input }) => store.paginateEntries(input)),
@@ -159,3 +161,9 @@ export const entriesRouter = createTRPCRouter({
     return await store.getStatistics();
   }),
 });
+
+export type EntryRouter = typeof entriesRouter;
+
+export type EntriesInputs = inferRouterInputs<EntryRouter>;
+
+export type EntriesOutputs = inferRouterOutputs<EntryRouter>;
