@@ -1,7 +1,8 @@
+import { Server } from "node:http";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { InMemoryClient } from "./client/in-memory-client";
 import { ProxyServer } from "./proxy-server";
-import { SimpleClient } from "./simple-client";
 import {
   makeEchoServer,
   makeFooBarServer,
@@ -20,7 +21,7 @@ describe("ProxyServer", () => {
       });
       await proxy.connectTargets();
 
-      const client = await SimpleClient.createAndConnectToServer(proxy);
+      const client = await InMemoryClient.createAndConnectToServer(proxy);
       const tools = await client.listTools();
 
       expect(tools.tools).toHaveLength(1);
@@ -49,7 +50,7 @@ describe("ProxyServer", () => {
 
     await proxy.connectTargets();
 
-    const client = await SimpleClient.createAndConnectToServer(proxy);
+    const client = await InMemoryClient.createAndConnectToServer(proxy);
     const tools = await client.listTools();
 
     expect(tools.tools).toHaveLength(2);
@@ -60,87 +61,39 @@ describe("ProxyServer", () => {
     await sseServerInstance.close();
   });
 
-  describe("add_prefix feature", () => {
-    test("should prefix tool names when add_prefix is true", async () => {
-      const streamableServer = await serveOverStreamable(
-        makeEchoServer(),
-        4524,
-      );
-      const sseServer = await serveOverSSE(makeFooBarServer(), 4525);
+  describe("tool prefixing", () => {
+    let echoServer: Server;
+    let fooServer: Server;
 
+    beforeAll(async () => {
+      echoServer = await serveOverStreamable(makeEchoServer(), 4524);
+      fooServer = await serveOverSSE(makeFooBarServer(), 4525);
+    });
+
+    afterAll(async () => {
+      await echoServer.close();
+      await fooServer.close();
+    });
+
+    test("should call prefixed tools with original names", async () => {
       const proxy = new ProxyServer({
         id: "test-proxy",
         name: "test-proxy",
+        addToolPrefix: true,
         servers: [
           {
             ...makeHTTPTargetConfig({
               name: "echo-service",
               url: `http://localhost:4524/mcp`,
             }),
-            add_prefix: true,
-          },
-          {
-            ...makeHTTPTargetConfig({
-              name: "foobar-service",
-              url: `http://localhost:4525/sse`,
-            }),
-            add_prefix: false,
           },
         ],
       });
 
       await proxy.connectTargets();
-
-      const client = await SimpleClient.createAndConnectToServer(proxy);
-      const tools = await client.listTools();
-
-      expect(tools.tools).toHaveLength(2);
-
-      // Check prefixed tool
-      const echoTool = tools.tools.find((t) => t.name === "echo-service__echo");
-      expect(echoTool).toBeDefined();
-      expect(echoTool?.description).toContain("[echo-service]");
-
-      // Check non-prefixed tool
-      const fooTool = tools.tools.find((t) => t.name === "foo");
-      expect(fooTool).toBeDefined();
-      expect(fooTool?.description).toContain("[foobar-service]");
-
-      // Verify prefixed tool is not accessible by original name
-      expect(tools.tools.find((t) => t.name === "echo")).toBeUndefined();
-
-      await streamableServer.close();
-      await sseServer.close();
-    });
-
-    test("should call prefixed tools with original names", async () => {
-      const streamableServer = await serveOverStreamable(
-        makeEchoServer(),
-        4526,
-      );
-
-      const proxy = new ProxyServer({
-        id: "test-proxy",
-        name: "test-proxy",
-        servers: [
-          {
-            ...makeHTTPTargetConfig({
-              name: "echo-service",
-              url: `http://localhost:4526/mcp`,
-            }),
-            add_prefix: true,
-          },
-        ],
-      });
-
-      await proxy.connectTargets();
-
-      const client = await SimpleClient.createAndConnectToServer(proxy);
-
-      // List tools first to populate the mapping
+      const client = await InMemoryClient.createAndConnectToServer(proxy);
       await client.listTools();
 
-      // Call the prefixed tool
       const result = (await client.callTool({
         name: "echo-service__echo",
         arguments: {
@@ -149,38 +102,32 @@ describe("ProxyServer", () => {
       })) as CallToolResult;
 
       expect(result.content?.[0].text).toContain("Hello, world!");
-
-      await streamableServer.close();
     });
 
-    test("should handle multiple servers with add_prefix enabled", async () => {
-      const server1 = await serveOverStreamable(makeEchoServer(), 4527);
-      const server2 = await serveOverStreamable(makeFooBarServer(), 4528);
-
+    test("should prefix tool names when addToolPrefix = true", async () => {
       const proxy = new ProxyServer({
         id: "test-proxy",
         name: "test-proxy",
+        addToolPrefix: true,
         servers: [
           {
             ...makeHTTPTargetConfig({
               name: "service-a",
-              url: `http://localhost:4527/mcp`,
+              url: `http://localhost:4524/mcp`,
             }),
-            add_prefix: true,
           },
           {
             ...makeHTTPTargetConfig({
               name: "service-b",
-              url: `http://localhost:4528/mcp`,
+              url: `http://localhost:4525/sse`,
             }),
-            add_prefix: true,
           },
         ],
       });
 
       await proxy.connectTargets();
 
-      const client = await SimpleClient.createAndConnectToServer(proxy);
+      const client = await InMemoryClient.createAndConnectToServer(proxy);
       const tools = await client.listTools();
 
       expect(tools.tools).toHaveLength(2);
@@ -188,68 +135,36 @@ describe("ProxyServer", () => {
         "service-a__echo",
         "service-b__foo",
       ]);
-
-      await server1.close();
-      await server2.close();
     });
 
-    test("should handle mixed prefixed and non-prefixed servers", async () => {
-      const echoServer1 = await serveOverStreamable(makeEchoServer(), 4529);
-      const echoServer2 = await serveOverStreamable(makeEchoServer(), 4530);
-
+    test("should not prefix tool names when addToolPrefix = false", async () => {
       const proxy = new ProxyServer({
         id: "test-proxy",
         name: "test-proxy",
+        addToolPrefix: false,
         servers: [
           {
             ...makeHTTPTargetConfig({
-              name: "prefixed-echo",
-              url: `http://localhost:4529/mcp`,
+              name: "service-a",
+              url: `http://localhost:4524/mcp`,
             }),
-            add_prefix: true,
           },
           {
             ...makeHTTPTargetConfig({
-              name: "normal-echo",
-              url: `http://localhost:4530/mcp`,
+              name: "service-b",
+              url: `http://localhost:4525/sse`,
             }),
-            add_prefix: false,
           },
         ],
       });
 
       await proxy.connectTargets();
 
-      const client = await SimpleClient.createAndConnectToServer(proxy);
+      const client = await InMemoryClient.createAndConnectToServer(proxy);
       const tools = await client.listTools();
 
       expect(tools.tools).toHaveLength(2);
-
-      // Both tools should exist with different names
-      expect(
-        tools.tools.find((t) => t.name === "prefixed-echo__echo"),
-      ).toBeDefined();
-      expect(tools.tools.find((t) => t.name === "echo")).toBeDefined();
-
-      // Both should be callable
-      const result1 = (await client.callTool({
-        name: "prefixed-echo__echo",
-        arguments: {
-          message: "Test 1",
-        },
-      })) as CallToolResult;
-      const result2 = (await client.callTool({
-        name: "echo",
-        arguments: {
-          message: "Test 2",
-        },
-      })) as CallToolResult;
-
-      expect(result1.content?.[0].text).toContain("Test 1");
-      expect(result2.content?.[0].text).toContain("Test 2");
-
-      await echoServer1.close();
-      await echoServer2.close();
+      expect(tools.tools.map((t) => t.name).sort()).toEqual(["echo", "foo"]);
     });
   });
 });

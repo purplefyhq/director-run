@@ -1,17 +1,17 @@
 import { ErrorCode } from "@director.run/utilities/error";
 import { expectToThrowAppError } from "@director.run/utilities/test";
 import { describe, expect, test } from "vitest";
-import { SimpleClient } from "./simple-client";
-import { makeEchoServer } from "./test/fixtures";
-import { serveOverSSE } from "./transport";
-import { serveOverStreamable } from "./transport";
+import { makeEchoServer } from "../test/fixtures";
+import { serveOverSSE } from "../transport";
+import { serveOverStreamable } from "../transport";
+import { HTTPClient } from "./http-client";
 
-describe("SimpleClient", () => {
+describe("HTTPClient", () => {
   describe("createAndConnectToHTTP", () => {
     describe("when connecting to a streamable server", () => {
       test("should connect properly", async () => {
         const instance = await serveOverStreamable(makeEchoServer(), 2345);
-        const client = await SimpleClient.createAndConnectToHTTP(
+        const client = await HTTPClient.createAndConnectToHTTP(
           "http://localhost:2345/mcp",
         );
 
@@ -24,7 +24,7 @@ describe("SimpleClient", () => {
     describe("when connecting to a sse server", () => {
       test("should connect properly", async () => {
         const instance = await serveOverSSE(makeEchoServer(), 2345);
-        const client = await SimpleClient.createAndConnectToHTTP(
+        const client = await HTTPClient.createAndConnectToHTTP(
           "http://localhost:2345/sse",
         );
 
@@ -36,7 +36,7 @@ describe("SimpleClient", () => {
     });
     test("should fail properly", async () => {
       await expectToThrowAppError(
-        () => SimpleClient.createAndConnectToHTTP("http://localhost/mcp"),
+        () => HTTPClient.createAndConnectToHTTP("http://localhost/mcp"),
         {
           code: ErrorCode.CONNECTION_REFUSED,
           props: {

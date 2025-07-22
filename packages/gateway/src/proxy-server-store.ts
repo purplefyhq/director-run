@@ -17,10 +17,13 @@ export class ProxyServerStore {
     this.telemetry = params.telemetry || Telemetry.noTelemetry();
   }
 
-  public static async create(
-    db: Database,
-    telemetry?: Telemetry,
-  ): Promise<ProxyServerStore> {
+  public static async create({
+    db,
+    telemetry,
+  }: {
+    db: Database;
+    telemetry?: Telemetry;
+  }): Promise<ProxyServerStore> {
     logger.debug("initializing ProxyServerStore");
     const store = new ProxyServerStore({
       db,
