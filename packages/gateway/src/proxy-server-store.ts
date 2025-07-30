@@ -4,7 +4,10 @@ import { OAuthHandler } from "@director.run/mcp/oauth/oauth-provider-factory";
 import { ProxyServer } from "@director.run/mcp/proxy/proxy-server";
 import { AppError, ErrorCode } from "@director.run/utilities/error";
 import { getLogger } from "@director.run/utilities/logger";
-import type { ProxyTargetAttributes } from "@director.run/utilities/schema";
+import type {
+  ProxyServerAttributes,
+  ProxyTargetAttributes,
+} from "@director.run/utilities/schema";
 import { Telemetry } from "@director.run/utilities/telemetry";
 import type { Database } from "./db";
 
@@ -145,7 +148,6 @@ export class ProxyServerStore {
     const newProxy = await this.db.addProxy({
       name,
       description,
-      addToolPrefix,
       servers: servers ?? [],
     });
     const proxyServer = new ProxyServer(
@@ -154,7 +156,6 @@ export class ProxyServerStore {
         id: newProxy.id,
         servers: newProxy.servers,
         description: newProxy.description ?? undefined,
-        addToolPrefix: newProxy.addToolPrefix,
       },
       {
         oAuthHandler: this._oAuthHandler,
@@ -188,12 +189,12 @@ export class ProxyServerStore {
   public async removeServer(
     proxyId: string,
     serverName: string,
-  ): Promise<ProxyServer> {
+  ): Promise<HTTPClient | StdioClient> {
     this.telemetry.trackEvent("server_removed");
 
     const proxy = this.get(proxyId);
 
-    await proxy.removeTarget(serverName);
+    const removedTarget = await proxy.removeTarget(serverName);
 
     const proxyDbEntry = await this.db.getProxy(proxyId);
     await this.db.updateProxy(proxyId, {
@@ -202,24 +203,41 @@ export class ProxyServerStore {
       ),
     });
 
-    return proxy;
+    return removedTarget;
   }
 
   public async update(
     proxyId: string,
-    attributes: Partial<{
-      name: string;
-      description: string;
-      addToolPrefix: boolean;
-    }>,
+    attributes: Partial<Pick<ProxyServerAttributes, "name" | "description">>,
   ) {
     this.telemetry.trackEvent("proxy_updated");
 
     const proxy = this.get(proxyId);
-
     await proxy.update(attributes);
-    await this.db.updateProxy(proxyId, attributes);
 
+    await this.db.updateProxy(proxyId, attributes);
     return proxy;
+  }
+
+  public async updateServer(
+    proxyId: string,
+    serverName: string,
+    attributes: Partial<
+      Pick<ProxyTargetAttributes, "toolPrefix" | "disabledTools">
+    >,
+  ): Promise<HTTPClient | StdioClient> {
+    const proxy = this.get(proxyId);
+    const target = await proxy.updateTarget(serverName, attributes);
+
+    const proxyDbEntry = await this.db.getProxy(proxyId);
+    await this.db.updateProxy(proxyId, {
+      servers: proxyDbEntry.servers.map((s) =>
+        s.name.toLocaleLowerCase() === serverName.toLocaleLowerCase()
+          ? { ...s, ...attributes }
+          : s,
+      ),
+    });
+
+    return target;
   }
 }

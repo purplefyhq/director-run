@@ -56,14 +56,18 @@ export class ProxyServer extends Server {
     this._id = attributes.id;
     this._name = attributes.name;
     this._description = attributes.description;
-    this._addToolPrefix = attributes.addToolPrefix;
 
     for (const server of attributes.servers) {
-      const target = createClientForTarget(server, this._oAuthHandler);
+      const target = createClientForTarget({
+        target: server,
+        oAuthHandler: this._oAuthHandler,
+        toolPrefix: server.toolPrefix,
+        disabledTools: server.disabledTools,
+      });
       this._targets.push(target);
     }
 
-    setupToolHandlers(this, this.targets);
+    setupToolHandlers(this);
     setupPromptHandlers(this, this._targets);
     setupResourceHandlers(this, this._targets);
     setupResourceTemplateHandlers(this, this._targets);
@@ -117,7 +121,12 @@ export class ProxyServer extends Server {
         `Target ${target.name} already exists`,
       );
     }
-    const newTarget = createClientForTarget(target, this._oAuthHandler);
+    const newTarget = createClientForTarget({
+      target,
+      oAuthHandler: this._oAuthHandler,
+      toolPrefix: target.toolPrefix,
+      disabledTools: target.disabledTools,
+    });
 
     try {
       await newTarget.connectToTarget({ throwOnError: attribs.throwOnError });
@@ -138,6 +147,24 @@ export class ProxyServer extends Server {
     // this.sendResourceListChanged();
   }
 
+  public async updateTarget(
+    targetName: string,
+
+    attributes: Partial<
+      Pick<ProxyTargetAttributes, "toolPrefix" | "disabledTools">
+    >,
+  ) {
+    const target = await this.getTarget(targetName);
+    if (attributes.toolPrefix !== undefined) {
+      target.toolPrefix = attributes.toolPrefix;
+    }
+    if (attributes.disabledTools !== undefined) {
+      target.disabledTools = attributes.disabledTools;
+    }
+
+    return target;
+  }
+
   public async removeTarget(targetName: string) {
     const existingTarget = this.targets.find(
       (t) => t.name.toLocaleLowerCase() === targetName.toLocaleLowerCase(),
@@ -155,6 +182,7 @@ export class ProxyServer extends Server {
       (t) => t.name.toLocaleLowerCase() === targetName.toLocaleLowerCase(),
     );
 
+    return existingTarget;
     // TODO: send list changed events. need client to support this first
     // this.sendToolListChanged();
     // this.sendPromptListChanged();
@@ -162,19 +190,18 @@ export class ProxyServer extends Server {
   }
 
   public update(
-    attributes: Partial<
-      Pick<ProxyServerAttributes, "name" | "description" | "addToolPrefix">
-    >,
+    attributes: Partial<Pick<ProxyServerAttributes, "name" | "description">>,
   ) {
-    const { name, description, addToolPrefix } = attributes;
-    if (name) {
+    const { name, description } = attributes;
+    if (name !== undefined && name !== this._name) {
+      if (name.trim() === "") {
+        throw new AppError(ErrorCode.BAD_REQUEST, `Name cannot be empty`);
+      }
+
       this._name = name;
     }
     if (description !== undefined && description !== this._description) {
       this._description = description;
-    }
-    if (addToolPrefix !== undefined && addToolPrefix !== this._addToolPrefix) {
-      this._addToolPrefix = addToolPrefix;
     }
   }
 
@@ -193,10 +220,13 @@ export class ProxyServer extends Server {
   }
 }
 
-function createClientForTarget(
-  target: ProxyTargetAttributes,
-  oAuthHandler?: OAuthHandler,
-) {
+function createClientForTarget(params: {
+  target: ProxyTargetAttributes;
+  oAuthHandler?: OAuthHandler;
+  toolPrefix?: string;
+  disabledTools?: string[];
+}) {
+  const { target, oAuthHandler, toolPrefix, disabledTools } = params;
   switch (target.transport.type) {
     case "http":
       return new HTTPClient({
@@ -204,6 +234,8 @@ function createClientForTarget(
         name: target.name,
         oAuthHandler,
         source: target.source,
+        toolPrefix,
+        disabledTools,
       });
     case "stdio":
       return new StdioClient({
@@ -212,6 +244,8 @@ function createClientForTarget(
         args: target.transport.args,
         env: target.transport.env,
         source: target.source,
+        toolPrefix,
+        disabledTools,
       });
   }
 }

@@ -23,6 +23,12 @@ const ProxyUpdateSchema = ProxyCreateSchema.omit({
   servers: true,
 }).partial();
 
+const TargetUpdateSchema = proxyTargetAttributesSchema
+  .omit({
+    transport: true,
+  })
+  .partial();
+
 export function createProxyStoreRouter({
   proxyStore,
 }: { proxyStore: ProxyServerStore }) {
@@ -42,7 +48,6 @@ export function createProxyStoreRouter({
         await proxyStore.create({
           name: input.name,
           description: input.description ?? undefined,
-          addToolPrefix: input.addToolPrefix,
           servers: input.servers,
         }),
       );
@@ -60,7 +65,6 @@ export function createProxyStoreRouter({
           await proxyStore.update(input.proxyId, {
             name: input.attributes.name,
             description: input.attributes.description ?? undefined,
-            addToolPrefix: input.attributes.addToolPrefix,
           }),
         );
       }),
@@ -83,6 +87,25 @@ export function createProxyStoreRouter({
 
         await restartConnectedClients(proxy);
         return await serializeProxyServerTarget(target);
+      }),
+
+    updateServer: t.procedure
+      .input(
+        z.object({
+          proxyId: z.string(),
+          serverName: z.string(),
+          attributes: TargetUpdateSchema,
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const proxy = await proxyStore.get(input.proxyId);
+        const server = await proxyStore.updateServer(
+          input.proxyId,
+          input.serverName,
+          input.attributes,
+        );
+        await restartConnectedClients(proxy);
+        return await serializeProxyServerTarget(server);
       }),
 
     getServer: t.procedure
@@ -126,12 +149,13 @@ export function createProxyStoreRouter({
         }),
       )
       .mutation(async ({ input }) => {
-        const proxy = await proxyStore.removeServer(
+        const proxy = await proxyStore.get(input.proxyId);
+        const server = await proxyStore.removeServer(
           input.proxyId,
           input.serverName,
         );
         await restartConnectedClients(proxy);
-        return await serializeProxyServer(proxy);
+        return await serializeProxyServerTarget(server);
       }),
   });
 }
