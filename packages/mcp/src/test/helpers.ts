@@ -19,6 +19,37 @@ export async function expectListToolsToReturnToolNames(
     expect(actualToolNames.sort()).toEqual(expectedToolNames.sort());
   }
   
+export async function expectListPromptsToReturn(params: {
+    client: Client,
+    expectedPrompts: {
+      name: string,
+      title: string,
+      description?: string,
+    }[],
+  }) {
+    const { client, expectedPrompts } = params;
+
+    const result = await client.listPrompts();
+    const promptNames = result.prompts.map((p) => ({name: p.name, title: p.title, description: p.description}));
+
+    expect(promptNames.sort()).toEqual(expectedPrompts.sort());
+  }
+
+  export async function expectGetPromptToReturn(params: {
+    client: Client,
+    promptName: string,
+    expectedBody: string,
+  }) {
+    const { client, promptName, expectedBody } = params;
+
+    // TODO: this needs to be called first otherwise the prompt is not available as it's lazy caching
+    await client.listPrompts();
+    const result = await client.getPrompt({
+      name: promptName,
+    });
+    expect(result.messages[0].content.text).toEqual(expectedBody);
+  }
+
   export async function expectToolCallToHaveResult(params: {
     client: Client;
     toolName: string;
@@ -56,4 +87,15 @@ export async function expectListToolsToReturnToolNames(
     expect(error).toBeInstanceOf(McpError);
     expect((error as McpError).code).toEqual(ErrorCode.InternalError);
     expect((error as McpError).message).toContain("Unknown tool");
+  }
+
+
+  export async function expectMCPError(fn: () => Promise<unknown>, expectedErrorCode: ErrorCode, expectedMessage?: string) {
+    const error = await fn().catch((e) => e);
+
+    expect(error).toBeInstanceOf(McpError);
+    expect((error as McpError).code).toEqual(expectedErrorCode);
+    if (expectedMessage) {
+      expect((error as McpError).message).toContain(expectedMessage);
+    }
   }

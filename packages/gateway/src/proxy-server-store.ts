@@ -11,6 +11,11 @@ import type {
   ProxyTargetAttributes,
 } from "@director.run/utilities/schema";
 import { Telemetry } from "@director.run/utilities/telemetry";
+import {
+  PROMPT_MANAGER_TARGET_NAME,
+  type Prompt,
+  PromptManager,
+} from "./capabilities/prompt-manager";
 import type { Database } from "./db";
 
 const logger = getLogger("ProxyServerStore");
@@ -157,6 +162,11 @@ export class ProxyServerStore {
         oAuthHandler: this._oAuthHandler,
       },
     );
+
+    // Add any existing prompts to the proxy server
+    const prompts = await this.db.getPrompts(proxy.id);
+    await proxyServer.addTarget(new PromptManager(prompts));
+
     await proxyServer.connectTargets();
     this.proxyServers.set(proxyServer.id, proxyServer);
 
@@ -215,5 +225,45 @@ export class ProxyServerStore {
     await this.db.updateServer(proxyId, serverName, attributes);
 
     return target;
+  }
+
+  public async addPrompt(proxyId: string, prompt: Prompt) {
+    const proxy = this.get(proxyId);
+    const promptManager = (await proxy.getTarget(
+      PROMPT_MANAGER_TARGET_NAME,
+    )) as PromptManager;
+    await this.db.addPrompt(proxyId, prompt);
+    return await promptManager.addPromptEntry(prompt);
+  }
+
+  public async removePrompt(proxyId: string, promptName: string) {
+    const proxy = this.get(proxyId);
+    const promptManager = (await proxy.getTarget(
+      PROMPT_MANAGER_TARGET_NAME,
+    )) as PromptManager;
+    await this.db.removePrompt(proxyId, promptName);
+    await promptManager.removePromptEntry(promptName);
+    return true;
+  }
+
+  public async updatePrompt(
+    proxyId: string,
+    promptName: string,
+    prompt: Partial<Pick<Prompt, "title" | "description" | "body">>,
+  ) {
+    const proxy = this.get(proxyId);
+    const promptManager = (await proxy.getTarget(
+      PROMPT_MANAGER_TARGET_NAME,
+    )) as PromptManager;
+    await this.db.updatePrompt(proxyId, promptName, prompt);
+    return await promptManager.updatePrompt(promptName, prompt);
+  }
+
+  public async listPrompts(proxyId: string): Promise<Prompt[]> {
+    const proxy = this.get(proxyId);
+    const promptManager = (await proxy.getTarget(
+      PROMPT_MANAGER_TARGET_NAME,
+    )) as PromptManager;
+    return promptManager.prompts;
   }
 }
