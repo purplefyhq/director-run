@@ -5,26 +5,26 @@ import {
   type PromptAttributes,
   type ProxyTargetAttributes,
 } from "@director.run/utilities/schema";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Database } from "./index";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { YAMLConfig } from "./index";
 
-describe("Database", () => {
-  let db: Database;
-  const dbPath = path.join(__dirname, "./test-db.test.json");
+describe("Config", () => {
+  let db: YAMLConfig;
+  const dbPath = path.join(__dirname, "./config.test.yaml");
 
-  beforeEach(async () => {
-    // Clean up any existing test database
+  beforeAll(async () => {
     if (fs.existsSync(dbPath)) {
       await fs.promises.unlink(dbPath);
     }
-    db = await Database.connect(dbPath);
+    db = await YAMLConfig.connect(dbPath);
+  });
+
+  beforeEach(async () => {
+    await db.purge();
   });
 
   afterEach(async () => {
-    // Clean up after each test
-    if (fs.existsSync(dbPath)) {
-      await fs.promises.unlink(dbPath);
-    }
+    await db.purge();
   });
 
   describe("connect", () => {
@@ -36,7 +36,7 @@ describe("Database", () => {
         await fs.promises.unlink(newDbPath);
       }
 
-      const newDb = await Database.connect(newDbPath);
+      const newDb = await YAMLConfig.connect(newDbPath);
 
       expect(fs.existsSync(newDbPath)).toBe(true);
       expect(newDb.filePath).toBe(newDbPath);
@@ -47,7 +47,7 @@ describe("Database", () => {
 
     it("should connect to existing database file", async () => {
       // Create a database first
-      const existingDb = await Database.connect(dbPath);
+      const existingDb = await YAMLConfig.connect(dbPath);
       await existingDb.addProxy({
         name: "test-proxy",
         description: "Test proxy",
@@ -55,7 +55,7 @@ describe("Database", () => {
       });
 
       // Connect to the same file
-      const connectedDb = await Database.connect(dbPath);
+      const connectedDb = await YAMLConfig.connect(dbPath);
       const proxies = await connectedDb.getAll();
 
       expect(proxies).toHaveLength(1);
@@ -358,6 +358,46 @@ describe("Database", () => {
       await expect(
         db.updateServer(addedProxy.id, "non-existent", {}),
       ).rejects.toThrow("Server not found");
+    });
+
+    it("should be able to unset attributes", async () => {
+      const proxyData = {
+        name: "test-proxy",
+        description: "A test proxy",
+        servers: [
+          {
+            name: "server-1",
+            transport: {
+              type: "http" as const,
+              url: "https://example.com",
+            },
+            toolPrefix: "test-prefix",
+            disabledTools: ["tool1", "tool2"],
+          },
+        ],
+      };
+
+      const addedProxy = await db.addProxy(proxyData);
+
+      // First, verify the server has the initial attributes
+      const initialServer = await db.getServer(addedProxy.id, "server-1");
+      expect(initialServer.toolPrefix).toBe("test-prefix");
+      expect(initialServer.disabledTools).toEqual(["tool1", "tool2"]);
+
+      // Now unset the attributes
+      const updatedServer = await db.updateServer(addedProxy.id, "server-1", {
+        toolPrefix: "",
+        disabledTools: [],
+      });
+
+      // Verify the attributes were unset
+      expect(updatedServer.toolPrefix).toBe("");
+      expect(updatedServer.disabledTools).toEqual([]);
+
+      // Verify the changes are persisted by retrieving the server again
+      const retrievedServer = await db.getServer(addedProxy.id, "server-1");
+      expect(retrievedServer.toolPrefix).toBe("");
+      expect(retrievedServer.disabledTools).toEqual([]);
     });
   });
 
