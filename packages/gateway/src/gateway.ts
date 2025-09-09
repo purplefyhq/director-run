@@ -11,21 +11,21 @@ import { Telemetry } from "@director.run/utilities/telemetry";
 import cors from "cors";
 import express from "express";
 import { Config, YAMLConfig } from "./config";
-import { ProxyServerStore } from "./proxy-server-store";
 import { createSSERouter } from "./routers/sse";
 import { createStreamableRouter } from "./routers/streamable";
 import { createTRPCExpressMiddleware } from "./routers/trpc";
+import { WorkspaceStore } from "./workspaces/workspace-store";
 
 const logger = getLogger("Gateway");
 
 export class Gateway {
-  public readonly proxyStore: ProxyServerStore;
+  public readonly proxyStore: WorkspaceStore;
   public readonly port: number;
   private server: Server;
   public readonly db: Config;
 
   private constructor(attribs: {
-    proxyStore: ProxyServerStore;
+    proxyStore: WorkspaceStore;
     port: number;
     db: Config;
     server: Server;
@@ -90,8 +90,8 @@ export class Gateway {
       }
     }
 
-    const proxyStore = await ProxyServerStore.create({
-      db,
+    const proxyStore = await WorkspaceStore.create({
+      config: db,
       telemetry,
       oAuthHandler,
     });
