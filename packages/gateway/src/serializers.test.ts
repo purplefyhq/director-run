@@ -1,51 +1,43 @@
-import { InMemoryClient } from "@director.run/mcp/client/in-memory-client";
-import { ProxyServer } from "@director.run/mcp/proxy/proxy-server";
-import {
-  makeEchoServer,
-  makeHTTPTargetConfig,
-} from "@director.run/mcp/test/fixtures";
 import { beforeAll, describe, expect, test } from "vitest";
+import { PROMPT_MANAGER_TARGET_NAME } from "./capabilities/prompt-manager";
 import { serializeProxyServer } from "./serializers";
+import { Workspace } from "./workspaces/workspace";
 
 describe("serializers", () => {
   describe("serializeProxyServer", () => {
-    let proxy: ProxyServer;
+    let proxy: Workspace;
 
-    beforeAll(async () => {
-      proxy = new ProxyServer({
+    beforeAll(() => {
+      proxy = new Workspace({
         id: "test-proxy",
         name: "test-proxy",
         servers: [
-          makeHTTPTargetConfig({
+          {
             name: "streamable",
+            type: "http",
             url: `http://localhost:4522/mcp`,
-          }),
-          makeHTTPTargetConfig({
+          },
+          {
             name: "sse",
+            type: "http",
             url: `http://localhost:4523/sse`,
-          }),
+          },
         ],
       });
-      await proxy.addTarget(
-        new InMemoryClient({
-          name: "prompt-store",
-          server: makeEchoServer(),
-        }),
-      );
     });
 
     test("should not include the in-memory targets by default", async () => {
       const serializedProxies = await serializeProxyServer(proxy);
       expect(serializedProxies.targets).toHaveLength(2);
       expect(serializedProxies.targets).not.toContainEqual(
-        expect.objectContaining({ name: "prompt-store" }),
+        expect.objectContaining({ name: PROMPT_MANAGER_TARGET_NAME }),
       );
       const serializedProxiesWithMem = await serializeProxyServer(proxy, {
         includeInMemoryTargets: true,
       });
       expect(serializedProxiesWithMem.targets).toHaveLength(3);
       expect(serializedProxiesWithMem.targets).toContainEqual(
-        expect.objectContaining({ name: "prompt-store" }),
+        expect.objectContaining({ name: PROMPT_MANAGER_TARGET_NAME }),
       );
     });
 

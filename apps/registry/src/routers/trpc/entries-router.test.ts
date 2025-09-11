@@ -2,11 +2,6 @@ import {
   makeFooBarServerStdioConfig,
   makeHTTPTargetConfig,
 } from "@director.run/gateway/test/fixtures";
-import type {
-  HTTPTransport,
-  RegistryEntry,
-  STDIOTransport,
-} from "@director.run/utilities/schema";
 import {
   afterAll,
   beforeAll,
@@ -19,6 +14,11 @@ import {
 import { type RegistryClient, createRegistryClient } from "../../client";
 import { env } from "../../config";
 import { Registry } from "../../registry";
+import type {
+  HTTPTransport,
+  RegistryEntry,
+  STDIOTransport,
+} from "../../schemas";
 import { makeTestEntries, makeTestEntry } from "../../test/fixtures/entries";
 
 describe("Entries Router", () => {
@@ -190,12 +190,8 @@ describe("Entries Router", () => {
           readme: "test",
           transport: {
             type: "stdio",
-            command: testServerStdioConfig.transport.command,
-            args: [
-              ...testServerStdioConfig.transport.args,
-              "--noop",
-              "<arg-param>",
-            ],
+            command: testServerStdioConfig.command,
+            args: [...testServerStdioConfig.args, "--noop", "<arg-param>"],
             env: {
               FIRST_PARAMETER: "<env-param>",
             },
@@ -229,7 +225,11 @@ describe("Entries Router", () => {
           ],
           homepage: "test",
           readme: "test",
-          transport: testServerHTTPConfig.transport,
+          transport: {
+            type: "http",
+            url: testServerHTTPConfig.url,
+            headers: testServerHTTPConfig.headers,
+          },
         });
       });
 
@@ -266,7 +266,7 @@ describe("Entries Router", () => {
           FIRST_PARAMETER: "env-param-value",
         });
         expect((stdioTransport as STDIOTransport).args).toEqual([
-          ...testServerStdioConfig.transport.args,
+          ...testServerStdioConfig.args,
           "--noop",
           "arg-param-value",
         ]);

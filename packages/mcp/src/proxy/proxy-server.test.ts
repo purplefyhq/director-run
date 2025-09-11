@@ -10,13 +10,10 @@ import {
   expect,
   test,
 } from "vitest";
+import { HTTPClient } from "../client/http-client";
 import { InMemoryClient } from "../client/in-memory-client";
 import { OAuthHandler } from "../oauth/oauth-provider-factory";
-import {
-  makeEchoServer,
-  makeHTTPTargetConfig,
-  makeKitchenSinkServer,
-} from "../test/fixtures";
+import { makeEchoServer, makeKitchenSinkServer } from "../test/fixtures";
 import {
   expectListToolsToReturnToolNames,
   expectToolCallToHaveResult,
@@ -51,7 +48,6 @@ describe("ProxyServer", () => {
     beforeEach(() => {
       proxy = new ProxyServer({
         id: "test-proxy",
-        name: "test-proxy",
         servers: [],
       });
     });
@@ -59,13 +55,10 @@ describe("ProxyServer", () => {
     describe("getTarget", () => {
       test("should return the target or throw an error if it doesn't exist", async () => {
         await proxy.addTarget(
-          {
+          new HTTPClient({
             name: "streamable",
-            transport: {
-              type: "http",
-              url: `http://localhost/mcp`,
-            },
-          },
+            url: `http://localhost/mcp`,
+          }),
           { throwOnError: false },
         );
 
@@ -83,10 +76,14 @@ describe("ProxyServer", () => {
 
     describe("addTarget", () => {
       test("should support adding InMemoryClient instances", async () => {
-        const client = new InMemoryClient({
-          name: "test-client",
-          server: makeKitchenSinkServer(),
-        });
+        const client = new InMemoryClient(
+          {
+            name: "test-client",
+          },
+          {
+            server: makeKitchenSinkServer(),
+          },
+        );
         await proxy.addTarget(client);
         expect(client.status).toBe("connected");
         expect(proxy.targets.length).toBe(1);
@@ -102,26 +99,20 @@ describe("ProxyServer", () => {
 
       test("should throw an error if the target already exists", async () => {
         await proxy.addTarget(
-          {
+          new HTTPClient({
             name: "streamable",
-            transport: {
-              type: "http",
-              url: `http://localhost/mcp`,
-            },
-          },
+            url: `http://localhost/mcp`,
+          }),
           { throwOnError: false },
         );
 
         await expectToThrowAppError(
           () =>
             proxy.addTarget(
-              {
+              new HTTPClient({
                 name: "streamable",
-                transport: {
-                  type: "http",
-                  url: `http://localhost/mcp`,
-                },
-              },
+                url: `http://localhost/mcp`,
+              }),
               { throwOnError: false },
             ),
           { code: ErrorCode.DUPLICATE, props: {} },
@@ -134,13 +125,10 @@ describe("ProxyServer", () => {
             await expectToThrowAppError(
               () =>
                 proxy.addTarget(
-                  {
+                  new HTTPClient({
                     name: "streamable",
-                    transport: {
-                      type: "http",
-                      url: `http://localhost/mcp`,
-                    },
-                  },
+                    url: `http://localhost/mcp`,
+                  }),
                   { throwOnError: true },
                 ),
               { code: ErrorCode.CONNECTION_REFUSED, props: {} },
@@ -148,27 +136,23 @@ describe("ProxyServer", () => {
             expect(proxy.targets.length).toBe(0);
           });
           test("should succeed when adding an unauthorized oauth target", async () => {
-            const proxy = new ProxyServer(
-              {
-                id: "test-proxy",
-                name: "test-proxy",
-                servers: [],
-              },
-              {
-                oAuthHandler: OAuthHandler.createMemoryBackedHandler({
-                  baseCallbackUrl: "http://localhost:8999",
-                }),
-              },
-            );
+            const proxy = new ProxyServer({
+              id: "test-proxy",
+              servers: [],
+            });
 
             const target = await proxy.addTarget(
-              {
-                name: "streamable",
-                transport: {
-                  type: "http",
+              new HTTPClient(
+                {
+                  name: "streamable",
                   url: `https://mcp.notion.com/mcp`,
                 },
-              },
+                {
+                  oAuthHandler: OAuthHandler.createMemoryBackedHandler({
+                    baseCallbackUrl: "http://localhost:8999",
+                  }),
+                },
+              ),
               { throwOnError: true },
             );
             expect(target.status).toBe("unauthorized");
@@ -176,27 +160,23 @@ describe("ProxyServer", () => {
         });
         describe("when throwOnError === false", () => {
           test("should succeed when adding a oauth target", async () => {
-            const proxy = new ProxyServer(
-              {
-                id: "test-proxy",
-                name: "test-proxy",
-                servers: [],
-              },
-              {
-                oAuthHandler: OAuthHandler.createMemoryBackedHandler({
-                  baseCallbackUrl: "http://localhost:8999",
-                }),
-              },
-            );
+            const proxy = new ProxyServer({
+              id: "test-proxy",
+              servers: [],
+            });
 
             const target = await proxy.addTarget(
-              {
-                name: "streamable",
-                transport: {
-                  type: "http",
+              new HTTPClient(
+                {
+                  name: "streamable",
                   url: `https://mcp.notion.com/mcp`,
                 },
-              },
+                {
+                  oAuthHandler: OAuthHandler.createMemoryBackedHandler({
+                    baseCallbackUrl: "http://localhost:8999",
+                  }),
+                },
+              ),
               { throwOnError: false },
             );
             expect(target.status).toBe("unauthorized");
@@ -204,44 +184,19 @@ describe("ProxyServer", () => {
           test("should not throw an exception when adding a broken target", async () => {
             const proxy = new ProxyServer({
               id: "test-proxy",
-              name: "test-proxy",
               servers: [],
             });
 
             const target = await proxy.addTarget(
-              {
+              new HTTPClient({
                 name: "streamable",
-                transport: {
-                  type: "http",
-                  url: `http://localhost/mcp`,
-                },
-              },
+                url: `http://localhost/mcp`,
+              }),
               { throwOnError: false },
             );
             expect(target.status).toBe("error");
           });
         });
-      });
-    });
-
-    describe("update", () => {
-      test("should update name and description", () => {
-        const proxy = new ProxyServer({
-          id: "test-proxy",
-          name: "test-proxy",
-          description: "old description",
-          servers: [],
-        });
-
-        expect(proxy.name).toBe("test-proxy");
-        expect(proxy.description).toBe("old description");
-
-        proxy.update({
-          name: "updated-proxy",
-          description: "new description",
-        });
-        expect(proxy.name).toBe("updated-proxy");
-        expect(proxy.description).toBe("new description");
       });
     });
   });
@@ -252,13 +207,12 @@ describe("ProxyServer", () => {
     beforeEach(() => {
       proxy = new ProxyServer({
         id: "test-proxy",
-        name: "test-proxy",
         servers: [
-          makeHTTPTargetConfig({
+          new HTTPClient({
             name: "streamable",
             url: `http://localhost:${STREAMABLE_PORT}/mcp`,
           }),
-          makeHTTPTargetConfig({
+          new HTTPClient({
             name: "sse",
             url: `http://localhost:${SSE_PORT}/sse`,
           }),
@@ -288,21 +242,16 @@ describe("ProxyServer", () => {
       beforeEach(async () => {
         proxy = new ProxyServer({
           id: "test-proxy",
-          name: "test-proxy",
           servers: [
-            {
-              ...makeHTTPTargetConfig({
-                name: "echo",
-                url: `http://localhost:${STREAMABLE_PORT}/mcp`,
-              }),
-            },
-            {
-              ...makeHTTPTargetConfig({
-                name: "kitchen-sink",
-                url: `http://localhost:${SSE_PORT}/sse`,
-              }),
+            new HTTPClient({
+              name: "echo",
+              url: `http://localhost:${STREAMABLE_PORT}/mcp`,
+            }),
+            new HTTPClient({
+              name: "kitchen-sink",
+              url: `http://localhost:${SSE_PORT}/sse`,
               disabledTools: ["add", "subtract"],
-            },
+            }),
           ],
         });
         await proxy.connectTargets();
@@ -351,22 +300,17 @@ describe("ProxyServer", () => {
       beforeEach(async () => {
         proxy = new ProxyServer({
           id: "test-proxy",
-          name: "test-proxy",
           servers: [
-            {
-              ...makeHTTPTargetConfig({
-                name: "echo",
-                url: `http://localhost:${STREAMABLE_PORT}/mcp`,
-              }),
+            new HTTPClient({
+              name: "echo",
+              url: `http://localhost:${STREAMABLE_PORT}/mcp`,
               toolPrefix: "a__",
-            },
-            {
-              ...makeHTTPTargetConfig({
-                name: "kitchen-sink",
-                url: `http://localhost:${SSE_PORT}/sse`,
-              }),
+            }),
+            new HTTPClient({
+              name: "kitchen-sink",
+              url: `http://localhost:${SSE_PORT}/sse`,
               toolPrefix: "b__",
-            },
+            }),
           ],
         });
 
@@ -423,21 +367,16 @@ describe("ProxyServer", () => {
       beforeEach(async () => {
         proxy = new ProxyServer({
           id: "test-proxy",
-          name: "test-proxy",
           servers: [
-            {
-              ...makeHTTPTargetConfig({
-                name: "echo",
-                url: `http://localhost:${STREAMABLE_PORT}/mcp`,
-              }),
-            },
-            {
-              ...makeHTTPTargetConfig({
-                name: "kitchen-sink",
-                url: `http://localhost:${SSE_PORT}/sse`,
-              }),
+            new HTTPClient({
+              name: "echo",
+              url: `http://localhost:${STREAMABLE_PORT}/mcp`,
+            }),
+            new HTTPClient({
+              name: "kitchen-sink",
+              url: `http://localhost:${SSE_PORT}/sse`,
               disabled: true,
-            },
+            }),
           ],
         });
 

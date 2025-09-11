@@ -6,6 +6,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
+import { HTTPClient } from "./client/http-client";
 import { ProxyServer } from "./proxy/proxy-server";
 
 export function serveOverSSE(server: Server, port: number) {
@@ -41,15 +42,11 @@ export async function proxyHTTPToStdio(url: string) {
   try {
     const proxy = new ProxyServer({
       id: "http2stdio",
-      name: "http2stdio",
       servers: [
-        {
+        new HTTPClient({
           name: "director-http",
-          transport: {
-            type: "http",
-            url: url,
-          },
-        },
+          url: url,
+        }),
       ],
     });
 

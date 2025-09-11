@@ -4,38 +4,41 @@ import {
   isAppErrorWithCode,
 } from "@director.run/utilities/error";
 import { getLogger } from "@director.run/utilities/logger";
+import { requiredStringSchema } from "@director.run/utilities/schema";
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import {
   SSEClientTransport,
   SseError,
 } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import { OAuthHandler } from "../oauth/oauth-provider-factory";
-import { AbstractClient, type AbstractClientParams } from "./abstract-client";
+import { AbsractClientSchema, AbstractClient } from "./abstract-client";
+import type { ClientStatus } from "./abstract-client";
 
 const logger = getLogger("client/http");
 
-export type HTTPClientParams = AbstractClientParams & {
-  url: string;
-  headers?: Record<string, string>;
+export const HTTPClientSchema = AbsractClientSchema.extend({
+  url: requiredStringSchema,
+  headers: z.record(requiredStringSchema, z.string()).optional(),
+});
+
+export type HTTPClientParams = z.infer<typeof HTTPClientSchema>;
+
+export type HTTPClientOptions = {
   oAuthHandler?: OAuthHandler;
 };
 
-export class HTTPClient extends AbstractClient {
+export class HTTPClient extends AbstractClient<HTTPClientParams> {
   private _url: string;
   private headers?: Record<string, string>;
   private oAuthHandler?: OAuthHandler;
 
-  constructor(params: HTTPClientParams) {
-    super({
-      name: params.name,
-      source: params.source,
-      toolPrefix: params.toolPrefix,
-      disabledTools: params.disabledTools,
-      disabled: params.disabled,
-    });
+  constructor(params: HTTPClientParams, options?: HTTPClientOptions) {
+    super(params);
     this._url = params.url;
-    this.oAuthHandler = params.oAuthHandler;
+    this.oAuthHandler = options?.oAuthHandler;
     this.headers = params.headers;
   }
 
@@ -244,14 +247,52 @@ export class HTTPClient extends AbstractClient {
     headers?: Record<string, string>,
     oAuthHandler?: OAuthHandler,
   ) {
-    const client = new HTTPClient({
-      name: "test streamable client",
-      url,
-      headers,
-      oAuthHandler,
-    });
+    const client = new HTTPClient(
+      {
+        name: "test streamable client",
+        url,
+        headers,
+      },
+      { oAuthHandler },
+    );
     await client.connectToTarget();
     return client;
+  }
+
+  public async toPlainObject(include?: {
+    tools?: boolean;
+    connectionInfo?: boolean;
+  }): Promise<
+    HTTPClientParams & {
+      type: "http";
+      tools?: Tool[];
+      connectionInfo?: {
+        status: ClientStatus;
+        lastConnectedAt?: Date;
+        lastErrorMessage?: string;
+      };
+    }
+  > {
+    return {
+      type: "http",
+      name: this.name,
+      source: this.source,
+      toolPrefix: this.toolPrefix,
+      disabledTools: this.disabledTools,
+      disabled: this.disabled,
+      url: this.url,
+      headers: this.headers,
+      tools: include?.tools
+        ? (await this.originalListTools()).tools
+        : undefined,
+      connectionInfo: include?.connectionInfo
+        ? {
+            status: this.status,
+            lastConnectedAt: this.lastConnectedAt,
+            lastErrorMessage: this.lastErrorMessage,
+          }
+        : undefined,
+    };
   }
 }
 

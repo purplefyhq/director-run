@@ -1,43 +1,126 @@
-import { HTTPClient } from "@director.run/mcp/client/http-client";
-import { StdioClient } from "@director.run/mcp/client/stdio-client";
+import { AbstractClient } from "@director.run/mcp/client/abstract-client";
+import {
+  HTTPClient,
+  HTTPClientSchema,
+} from "@director.run/mcp/client/http-client";
+import {
+  StdioClient,
+  StdioClientSchema,
+} from "@director.run/mcp/client/stdio-client";
 import type { OAuthHandler } from "@director.run/mcp/oauth/oauth-provider-factory";
-import { ProxyServer } from "@director.run/mcp/proxy/proxy-server";
-import { type ProxyTarget } from "@director.run/mcp/proxy/proxy-server";
-import type { ProxyServerAttributes } from "@director.run/utilities/schema";
-import type { ProxyTargetAttributes } from "@director.run/utilities/schema";
+import {
+  ProxyServer,
+  type ProxyTarget,
+} from "@director.run/mcp/proxy/proxy-server";
+import { AppError, ErrorCode } from "@director.run/utilities/error";
+import {
+  optionalStringSchema,
+  requiredStringSchema,
+} from "@director.run/utilities/schema";
 import { Telemetry } from "@director.run/utilities/telemetry";
+import { z } from "zod";
 import {
   PROMPT_MANAGER_TARGET_NAME,
   type Prompt,
   PromptManager,
+  PromptSchema,
 } from "../capabilities/prompt-manager";
 import { Config } from "../config";
+
+export const WorkspaceHTTPTargetSchema = HTTPClientSchema.extend({
+  type: z.literal("http"),
+});
+
+export type WorkspaceHTTPTarget = z.infer<typeof WorkspaceHTTPTargetSchema>;
+
+export const WorkspaceStdioTargetSchema = StdioClientSchema.extend({
+  type: z.literal("stdio"),
+});
+
+export type WorkspaceStdioTarget = z.infer<typeof WorkspaceStdioTargetSchema>;
+
+const WorkspaceTargetSchema = z.union([
+  WorkspaceHTTPTargetSchema,
+  WorkspaceStdioTargetSchema,
+]);
+
+export type WorkspaceTarget = z.infer<typeof WorkspaceTargetSchema>;
+
+export const WorkspaceSchema = z.object({
+  id: requiredStringSchema,
+  name: requiredStringSchema,
+  description: optionalStringSchema,
+  prompts: z.array(PromptSchema).optional(),
+  servers: z.array(WorkspaceTargetSchema),
+});
+
+export type WorkspaceParams = z.infer<typeof WorkspaceSchema>;
 
 export class Workspace extends ProxyServer {
   private _config?: Config;
   private _telemetry?: Telemetry;
+  private _oAuthHandler?: OAuthHandler;
+  private _description?: string;
+  private _name: string; // TODO: change to 'displayName'
 
   constructor(
-    attributes: ProxyServerAttributes,
+    attributes: WorkspaceParams,
     params?: {
       oAuthHandler?: OAuthHandler;
       config?: Config;
       telemetry?: Telemetry;
     },
   ) {
-    super(attributes, params);
+    super({
+      id: attributes.id,
+      servers: [
+        ...attributes.servers.map((server) =>
+          createClientForTarget({
+            target: server,
+            oAuthHandler: params?.oAuthHandler,
+          }),
+        ),
+        new PromptManager({
+          prompts: attributes.prompts,
+        }),
+      ],
+    });
+
+    this._name = attributes.name;
+    this._description = attributes.description;
+    this._oAuthHandler = params?.oAuthHandler;
     this._config = params?.config;
     this._telemetry = params?.telemetry;
   }
 
+  public get description() {
+    return this._description;
+  }
+
+  get name() {
+    return this._name;
+  }
+
   public async addTarget(
-    server: ProxyTargetAttributes,
+    server: WorkspaceTarget | ProxyTarget,
     params: { throwOnError: boolean } = { throwOnError: true },
   ): Promise<ProxyTarget> {
     await this.trackEvent("server_added");
-    const target = await super.addTarget(server, params);
 
+    let target: ProxyTarget;
+
+    if (server instanceof AbstractClient) {
+      target = server;
+    } else {
+      target = createClientForTarget({
+        target: server,
+        oAuthHandler: this._oAuthHandler,
+      });
+    }
+
+    await super.addTarget(target, params);
     await this.persistToConfig();
+
     return target;
   }
 
@@ -51,9 +134,7 @@ export class Workspace extends ProxyServer {
 
   public async updateTarget(
     serverName: string,
-    attributes: Partial<
-      Pick<ProxyTargetAttributes, "toolPrefix" | "disabledTools">
-    >,
+    attributes: Partial<Pick<WorkspaceTarget, "toolPrefix" | "disabledTools">>,
   ): Promise<ProxyTarget> {
     const target = await super.updateTarget(serverName, attributes);
     await this.persistToConfig();
@@ -101,44 +182,40 @@ export class Workspace extends ProxyServer {
   }
 
   public async update(
-    attributes: Partial<Pick<ProxyServerAttributes, "name" | "description">>,
+    attributes: Partial<Pick<WorkspaceParams, "name" | "description">>,
   ) {
     await this.trackEvent("proxy_updated");
-    await super.update(attributes);
+
+    const { name, description } = attributes;
+    if (name !== undefined && name !== this._name) {
+      if (name.trim() === "") {
+        throw new AppError(ErrorCode.BAD_REQUEST, `Name cannot be empty`);
+      }
+
+      this._name = name;
+    }
+    if (description !== undefined && description !== this._description) {
+      this._description = description;
+    }
     await this.persistToConfig();
 
     return this;
   }
 
-  protected async addSystemTarget(target: ProxyTarget) {
-    await super.addTarget(target);
-  }
-
   static async fromConfig(
-    config: ProxyServerAttributes,
+    attributes: WorkspaceParams,
     params?: {
       oAuthHandler?: OAuthHandler;
       config?: Config;
       telemetry?: Telemetry;
     },
   ): Promise<Workspace> {
-    const workspace = new Workspace(
-      {
-        name: config.name,
-        id: config.id,
-        servers: config.servers,
-        description: config.description ?? undefined,
-      },
-      {
-        oAuthHandler: params?.oAuthHandler,
-        config: params?.config,
-        telemetry: params?.telemetry,
-      },
-    );
-
-    await workspace.addSystemTarget(new PromptManager(config.prompts || []));
+    const workspace = new Workspace(attributes, {
+      oAuthHandler: params?.oAuthHandler,
+      config: params?.config,
+      telemetry: params?.telemetry,
+    });
     await workspace.connectTargets();
-
     return workspace;
   }
 
@@ -154,43 +231,52 @@ export class Workspace extends ProxyServer {
     }
   }
 
-  private async toConfig(): Promise<ProxyServerAttributes> {
+  private async toConfig(): Promise<WorkspaceParams> {
     return {
       id: this.id,
       name: this.name,
-      description: this.description ?? undefined,
+      description: this.description,
       prompts: await this.listPrompts(),
-      servers: this.targets
-        .filter(
-          (target) =>
-            target instanceof HTTPClient || target instanceof StdioClient,
-        )
-        .map((target) => {
-          if (target instanceof HTTPClient) {
-            return {
-              name: target.name,
-              toolPrefix: target.toolPrefix ?? undefined,
-              disabledTools: target.disabledTools ?? undefined,
-              disabled: target.disabled,
-              transport: { type: "http", url: target.url },
-            };
-          } else if (target instanceof StdioClient) {
-            return {
-              name: target.name,
-              toolPrefix: target.toolPrefix ?? undefined,
-              disabledTools: target.disabledTools ?? undefined,
-              disabled: target.disabled,
-              transport: {
-                type: "stdio",
-                command: target.command,
-                args: target.args,
-                env: target.env,
-              },
-            };
-          } else {
-            throw new Error("Unknown target type");
-          }
-        }),
+      servers: await Promise.all(
+        this.targets
+          .filter(
+            (target) =>
+              target instanceof HTTPClient || target instanceof StdioClient,
+          )
+          .map((target) => target.toPlainObject()),
+      ),
     };
+  }
+}
+
+function createClientForTarget(params: {
+  target: WorkspaceTarget;
+  oAuthHandler?: OAuthHandler;
+}) {
+  const { target, oAuthHandler } = params;
+  switch (target.type) {
+    case "http":
+      return new HTTPClient(
+        {
+          url: target.url,
+          name: target.name,
+          source: target.source,
+          toolPrefix: target.toolPrefix,
+          disabledTools: target.disabledTools,
+          disabled: target.disabled,
+        },
+        { oAuthHandler },
+      );
+    case "stdio":
+      return new StdioClient({
+        name: target.name,
+        command: target.command,
+        args: target.args,
+        env: target.env,
+        source: target.source,
+        toolPrefix: target.toolPrefix,
+        disabledTools: target.disabledTools,
+        disabled: target.disabled,
+      });
   }
 }

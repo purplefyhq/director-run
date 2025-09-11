@@ -2,13 +2,13 @@ import { HTTPClient } from "@director.run/mcp/client/http-client";
 import { OAuthHandler } from "@director.run/mcp/oauth/oauth-provider-factory";
 import { AppError, ErrorCode } from "@director.run/utilities/error";
 import { getLogger } from "@director.run/utilities/logger";
-import type {
-  ProxyServerAttributes,
-  ProxyTargetAttributes,
-} from "@director.run/utilities/schema";
 import { Telemetry } from "@director.run/utilities/telemetry";
 import type { Config } from "../config";
-import { Workspace } from "./workspace";
+import {
+  Workspace,
+  type WorkspaceParams,
+  type WorkspaceTarget,
+} from "./workspace";
 
 const logger = getLogger("WorkspaceStore");
 
@@ -122,7 +122,7 @@ export class WorkspaceStore {
   }: {
     name: string;
     description?: string;
-    servers?: ProxyTargetAttributes[];
+    servers?: WorkspaceTarget[];
   }): Promise<Workspace> {
     this.telemetry.trackEvent("proxy_created");
 
@@ -142,7 +142,7 @@ export class WorkspaceStore {
     return proxyServer;
   }
 
-  private async initializeAndAddProxy(proxy: ProxyServerAttributes) {
+  private async initializeAndAddProxy(proxy: WorkspaceParams) {
     const workspace = await Workspace.fromConfig(proxy, {
       oAuthHandler: this._oAuthHandler,
       config: this.config,

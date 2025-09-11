@@ -1,4 +1,4 @@
-import type { ProxyTargetSource } from "@director.run/utilities/schema";
+import { requiredStringSchema } from "@director.run/utilities/schema";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { RequestOptions } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
@@ -8,6 +8,8 @@ import type {
   ListToolsRequest,
 } from "@modelcontextprotocol/sdk/types.js";
 import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import packageJson from "../../package.json";
 
 export type ClientStatus =
@@ -16,26 +18,38 @@ export type ClientStatus =
   | "unauthorized"
   | "error";
 
-export type AbstractClientParams = {
-  name: string;
-  source?: ProxyTargetSource;
-  toolPrefix?: string;
-  disabledTools?: string[];
-  disabled?: boolean; // if true, the client will not connect
-};
+export const SourceDataSchema = z.object({
+  name: requiredStringSchema,
+  entryId: requiredStringSchema,
+  entryData: z.record(z.string(), z.unknown()).optional(),
+});
 
-// TODO: use generic type for source so it makes a better sdk
-export abstract class AbstractClient extends Client {
+// TODO: deprecate this as soon as clients no longer use it
+export type SourceData = z.infer<typeof SourceDataSchema>;
+
+export const AbsractClientSchema = z.object({
+  name: requiredStringSchema,
+  source: SourceDataSchema.optional(),
+  toolPrefix: z.string().optional(),
+  disabledTools: z.array(z.string()).optional(),
+  disabled: z.boolean().optional(),
+});
+
+export type AbstractClientParams = z.infer<typeof AbsractClientSchema>;
+
+export abstract class AbstractClient<
+  Params extends AbstractClientParams,
+> extends Client {
   public readonly name: string;
   public status: ClientStatus = "disconnected";
   public lastConnectedAt?: Date;
   public lastErrorMessage?: string;
-  public readonly source?: ProxyTargetSource;
+  public readonly source?: SourceData;
   public toolPrefix?: string;
   public disabledTools?: string[];
   protected _disabled: boolean = false;
 
-  constructor(params: AbstractClientParams) {
+  constructor(params: Params) {
     const { name, source, toolPrefix, disabledTools, disabled } = params;
     super(
       {
@@ -161,4 +175,19 @@ export abstract class AbstractClient extends Client {
       ? this.status
       : "disconnected";
   }
+
+  public abstract toPlainObject(include?: {
+    tools?: boolean;
+    connectionInfo?: boolean;
+  }): Promise<
+    Params & {
+      type: string;
+      tools?: Tool[];
+      connectionInfo?: {
+        status: ClientStatus;
+        lastConnectedAt?: Date;
+        lastErrorMessage?: string;
+      };
+    }
+  >;
 }

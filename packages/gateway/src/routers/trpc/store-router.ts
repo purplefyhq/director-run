@@ -3,19 +3,23 @@ import { z } from "zod";
 
 import { HTTPClient } from "@director.run/mcp/client/http-client";
 import { AppError, ErrorCode } from "@director.run/utilities/error";
-import { proxyTargetAttributesSchema } from "@director.run/utilities/schema";
+import {
+  type ServerConfigEntry,
+  ServerConfigEntrySchema,
+} from "../../config/schema";
 import { restartConnectedClients } from "../../helpers";
 import {
   serializeProxyServer,
   serializeProxyServerTarget,
   serializeProxyServers,
 } from "../../serializers";
+import type { WorkspaceTarget } from "../../workspaces/workspace";
 import { WorkspaceStore } from "../../workspaces/workspace-store";
 
 const ProxyCreateSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
-  servers: z.array(proxyTargetAttributesSchema).optional(),
+  servers: z.array(ServerConfigEntrySchema).optional(),
   addToolPrefix: z.boolean().optional(),
 });
 
@@ -23,11 +27,9 @@ const ProxyUpdateSchema = ProxyCreateSchema.omit({
   servers: true,
 }).partial();
 
-const TargetUpdateSchema = proxyTargetAttributesSchema
-  .omit({
-    transport: true,
-  })
-  .partial();
+const TargetUpdateSchema = ServerConfigEntrySchema.omit({
+  transport: true,
+}).partial();
 
 const PromptSchema = z.object({
   name: z.string(),
@@ -70,7 +72,7 @@ export function createProxyStoreRouter({
         await proxyStore.create({
           name: input.name,
           description: input.description ?? undefined,
-          servers: input.servers,
+          servers: input.servers?.map(oldServerToTargetParams),
         }),
       );
     }),
@@ -100,7 +102,7 @@ export function createProxyStoreRouter({
       .input(
         z.object({
           proxyId: z.string(),
-          server: proxyTargetAttributesSchema,
+          server: ServerConfigEntrySchema,
           queryParams: z
             .object({
               includeTools: z.boolean().optional(),
@@ -110,7 +112,11 @@ export function createProxyStoreRouter({
       )
       .mutation(async ({ input }) => {
         const proxy = await proxyStore.get(input.proxyId);
-        const target = await proxy.addTarget(input.server);
+
+        const target = await proxy.addTarget(
+          oldServerToTargetParams(input.server),
+        );
+
         await restartConnectedClients(proxy);
         return await serializeProxyServerTarget(target, input.queryParams);
       }),
@@ -269,3 +275,32 @@ export function createProxyStoreRouter({
       }),
   });
 }
+
+const oldServerToTargetParams = (
+  server: ServerConfigEntry,
+): WorkspaceTarget => {
+  if (server.transport.type === "http") {
+    return {
+      type: server.transport.type,
+      name: server.name,
+      url: server.transport.url,
+      headers: server.transport.headers,
+      toolPrefix: server.toolPrefix,
+      disabledTools: server.disabledTools,
+      disabled: server.disabled,
+    };
+  } else if (server.transport.type === "stdio") {
+    return {
+      type: server.transport.type,
+      name: server.name,
+      command: server.transport.command,
+      args: server.transport.args,
+      env: server.transport.env,
+      toolPrefix: server.toolPrefix,
+      disabledTools: server.disabledTools,
+      disabled: server.disabled,
+    };
+  } else {
+    throw new AppError(ErrorCode.BAD_REQUEST, "invalid server transport type");
+  }
+};

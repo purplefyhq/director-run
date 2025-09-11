@@ -1,36 +1,39 @@
-import {} from "@director.run/utilities/error";
 import { getLogger } from "@director.run/utilities/logger";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { AbstractClient, type AbstractClientParams } from "./abstract-client";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import type { ClientStatus } from "./abstract-client";
+import { AbsractClientSchema, AbstractClient } from "./abstract-client";
 
 const logger = getLogger("client/in-memory");
 
-export type InMemoryClientParams = AbstractClientParams & {
+export const InMemoryClientSchema = AbsractClientSchema.extend({});
+
+export type InMemoryClientParams = z.infer<typeof InMemoryClientSchema>;
+export type InMemoryClientOptions = {
   server: Server;
 };
 
-export class InMemoryClient extends AbstractClient {
+export class InMemoryClient extends AbstractClient<InMemoryClientParams> {
   protected server: Server;
 
-  constructor(params: InMemoryClientParams) {
-    super({
-      name: params.name,
-      source: params.source,
-      toolPrefix: params.toolPrefix,
-      disabledTools: params.disabledTools,
-      disabled: params.disabled,
-    });
-    this.server = params.server;
+  constructor(params: InMemoryClientParams, options: InMemoryClientOptions) {
+    super(params);
+    this.server = options.server;
   }
 
   public static async createAndConnectToServer(
     server: Server,
   ): Promise<InMemoryClient> {
-    const client = new InMemoryClient({
-      name: "test client",
-      server,
-    });
+    const client = new InMemoryClient(
+      {
+        name: "test client",
+      },
+      {
+        server,
+      },
+    );
 
     await client.connectToTarget({ throwOnError: true });
 
@@ -55,5 +58,39 @@ export class InMemoryClient extends AbstractClient {
     this.lastConnectedAt = new Date();
     this.lastErrorMessage = undefined;
     return true;
+  }
+
+  public async toPlainObject(include?: {
+    tools?: boolean;
+    connectionInfo?: boolean;
+  }): Promise<
+    InMemoryClientParams & {
+      type: "mem";
+      tools?: Tool[];
+      connectionInfo?: {
+        status: ClientStatus;
+        lastConnectedAt?: Date;
+        lastErrorMessage?: string;
+      };
+    }
+  > {
+    return {
+      type: "mem",
+      name: this.name,
+      source: this.source,
+      toolPrefix: this.toolPrefix,
+      disabledTools: this.disabledTools,
+      disabled: this.disabled,
+      tools: include?.tools
+        ? (await this.originalListTools()).tools
+        : undefined,
+      connectionInfo: include?.connectionInfo
+        ? {
+            status: this.status,
+            lastConnectedAt: this.lastConnectedAt,
+            lastErrorMessage: this.lastErrorMessage,
+          }
+        : undefined,
+    };
   }
 }

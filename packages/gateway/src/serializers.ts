@@ -1,15 +1,13 @@
 import type { ClientStatus } from "@director.run/mcp/client/abstract-client";
+import type { SourceData } from "@director.run/mcp/client/abstract-client";
 import { HTTPClient } from "@director.run/mcp/client/http-client";
 import { InMemoryClient } from "@director.run/mcp/client/in-memory-client";
 import { StdioClient } from "@director.run/mcp/client/stdio-client";
-import {
-  ProxyServer,
-  type ProxyTarget,
-} from "@director.run/mcp/proxy/proxy-server";
-import type { ProxyTargetSource } from "@director.run/utilities/schema";
+import type { ProxyTarget } from "@director.run/mcp/proxy/proxy-server";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { Prompt } from "./capabilities/prompt-manager";
 import { getStreamablePathForProxy } from "./helpers";
+import type { Workspace } from "./workspaces/workspace";
 
 type SerializedTarget = {
   name: string;
@@ -30,7 +28,7 @@ type SerializedTarget = {
     | {
         type: "mem";
       };
-  source?: ProxyTargetSource;
+  source?: SourceData;
   toolPrefix?: string;
   disabledTools?: string[];
   disabled?: boolean;
@@ -38,7 +36,7 @@ type SerializedTarget = {
 };
 
 export async function serializeProxyServer(
-  proxy: ProxyServer,
+  proxy: Workspace,
   params?: { includeInMemoryTargets?: boolean; prompts?: Prompt[] },
 ) {
   const targets: SerializedTarget[] = [];
@@ -54,7 +52,6 @@ export async function serializeProxyServer(
     name: proxy.name,
     description: proxy.description,
     prompts: params?.prompts,
-    addToolPrefix: proxy.addToolPrefix,
     targets,
     servers: targets,
     path: getStreamablePathForProxy(proxy.id),
@@ -62,7 +59,7 @@ export async function serializeProxyServer(
 }
 
 export async function serializeProxyServers(
-  proxies: ProxyServer[],
+  proxies: Workspace[],
   params?: { includeInMemoryTargets?: boolean },
 ) {
   const ret = [];

@@ -1,15 +1,20 @@
 import fs from "fs";
 import { existsSync } from "node:fs";
 import { AppError, ErrorCode } from "@director.run/utilities/error";
-import {
-  type ConfigurationData,
-  type ProxyServerAttributes,
-  databaseAttributesSchema,
-} from "@director.run/utilities/schema";
 import _ from "lodash";
 import slugify from "slugify";
 import YAML from "yaml";
 import { ZodError } from "zod";
+import { z } from "zod";
+
+import { type WorkspaceParams, WorkspaceSchema } from "../workspaces/workspace";
+
+export const databaseAttributesSchema = z.object({
+  version: z.string().optional(),
+  playbooks: z.array(WorkspaceSchema),
+});
+
+export type ConfigurationData = z.infer<typeof databaseAttributesSchema>;
 
 export abstract class Config {
   public readonly filePath: string;
@@ -23,16 +28,14 @@ export abstract class Config {
   protected abstract readData(): Promise<ConfigurationData>;
   protected abstract writeData(data: ConfigurationData): Promise<void>;
 
-  async addProxy(
-    proxy: Omit<ProxyServerAttributes, "id">,
-  ): Promise<ProxyServerAttributes> {
+  async addProxy(proxy: Omit<WorkspaceParams, "id">): Promise<WorkspaceParams> {
     const store = await this.readData();
 
     if (_.find(store.playbooks, { name: proxy.name })) {
       throw new Error("Proxy already exists");
     }
 
-    const newProxy: ProxyServerAttributes = {
+    const newProxy: WorkspaceParams = {
       id: slugifyName(proxy.name),
       ...proxy,
       servers: _.map(proxy.servers || [], (s) => ({
@@ -46,7 +49,7 @@ export abstract class Config {
     return newProxy;
   }
 
-  async getWorkspace(id: string): Promise<ProxyServerAttributes> {
+  async getWorkspace(id: string): Promise<WorkspaceParams> {
     const store = await this.readData();
     const proxy = _.find(store.playbooks, { id });
     if (!proxy) {
@@ -55,7 +58,7 @@ export abstract class Config {
     return proxy;
   }
 
-  async setWorkspace(id: string, proxy: ProxyServerAttributes): Promise<void> {
+  async setWorkspace(id: string, proxy: WorkspaceParams): Promise<void> {
     if (proxy.id !== id) {
       throw new Error("Id mismatch");
     }
@@ -80,7 +83,7 @@ export abstract class Config {
     return store.playbooks.length;
   }
 
-  async getAll(): Promise<ProxyServerAttributes[]> {
+  async getAll(): Promise<WorkspaceParams[]> {
     const store = await this.readData();
     return store.playbooks;
   }

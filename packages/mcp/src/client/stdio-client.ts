@@ -1,30 +1,30 @@
 import { AppError, ErrorCode } from "@director.run/utilities/error";
 import { getLogger } from "@director.run/utilities/logger";
+import { requiredStringSchema } from "@director.run/utilities/schema";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
-import { AbstractClient, type AbstractClientParams } from "./abstract-client";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import { AbsractClientSchema, AbstractClient } from "./abstract-client";
+import type { ClientStatus } from "./abstract-client";
 
 const logger = getLogger("client/stdio");
 
-export type StdioClientParams = AbstractClientParams & {
-  command: string;
-  args: string[];
-  env?: Record<string, string>;
-};
+export const StdioClientSchema = AbsractClientSchema.extend({
+  command: requiredStringSchema,
+  args: z.array(z.string()),
+  env: z.record(requiredStringSchema, z.string()).optional(),
+});
 
-export class StdioClient extends AbstractClient {
+export type StdioClientParams = z.infer<typeof StdioClientSchema>;
+
+export class StdioClient extends AbstractClient<StdioClientParams> {
   public readonly command: string;
   public readonly args: string[];
   public readonly env?: Record<string, string>;
 
   constructor(params: StdioClientParams) {
-    super({
-      name: params.name,
-      source: params.source,
-      toolPrefix: params.toolPrefix,
-      disabledTools: params.disabledTools,
-      disabled: params.disabled,
-    });
+    super(params);
     this.command = params.command;
     this.args = params.args;
     this.env = params.env;
@@ -78,6 +78,43 @@ export class StdioClient extends AbstractClient {
     });
     await client.connectToTarget({ throwOnError: true });
     return client;
+  }
+
+  public async toPlainObject(include?: {
+    tools?: boolean;
+    connectionInfo?: boolean;
+  }): Promise<
+    StdioClientParams & {
+      type: "stdio";
+      tools?: Tool[];
+      connectionInfo?: {
+        status: ClientStatus;
+        lastConnectedAt?: Date;
+        lastErrorMessage?: string;
+      };
+    }
+  > {
+    return {
+      type: "stdio",
+      name: this.name,
+      source: this.source,
+      toolPrefix: this.toolPrefix,
+      disabledTools: this.disabledTools,
+      disabled: this.disabled,
+      command: this.command,
+      args: this.args,
+      env: this.env,
+      tools: include?.tools
+        ? (await this.originalListTools()).tools
+        : undefined,
+      connectionInfo: include?.connectionInfo
+        ? {
+            status: this.status,
+            lastConnectedAt: this.lastConnectedAt,
+            lastErrorMessage: this.lastErrorMessage,
+          }
+        : undefined,
+    };
   }
 }
 
