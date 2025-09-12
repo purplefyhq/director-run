@@ -1,7 +1,10 @@
 "use client";
 
-import { LayoutView, LayoutViewContent } from "@/components/layout/layout";
-import { LayoutNavigation } from "@/components/layout/navigation";
+import {
+  LayoutView,
+  LayoutViewContent,
+  LayoutViewHeader,
+} from "@/components/layout/layout";
 import { McpToolSheet } from "@/components/mcp-servers/mcp-tool-sheet";
 import { ProxyDetail } from "@/components/pages/workspace-detail";
 import { ProxyActionsDropdown } from "@/components/proxies/proxy-actions-dropdown";
@@ -72,11 +75,6 @@ export default function ProxyPage() {
     serverId || undefined,
   );
   const tool = tools.find((tool) => tool.name === toolId);
-  const {
-    data: servers,
-    isLoading: serversLoading,
-    error: serversError,
-  } = trpc.store.getAll.useQuery();
 
   const { data: availableClients, isLoading: isClientsLoading } =
     trpc.installer.allClients.useQuery();
@@ -195,6 +193,11 @@ export default function ProxyPage() {
           toolId: it.name,
           serverId: server,
         })}`,
+        onClick: () =>
+          setProxyQuery({
+            toolId: it.name,
+            serverId: server,
+          }),
         badges: server && (
           <Badge>
             <BadgeLabel uppercase>{server}</BadgeLabel>
@@ -205,11 +208,7 @@ export default function ProxyPage() {
 
   return (
     <LayoutView>
-      <LayoutNavigation
-        servers={servers}
-        isLoading={serversLoading}
-        error={serversError?.message}
-      >
+      <LayoutViewHeader>
         <Breadcrumb className="grow">
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -227,7 +226,7 @@ export default function ProxyPage() {
           deleteOpen={deleteOpen}
           onDeleteOpenChange={setDeleteOpen}
         />
-      </LayoutNavigation>
+      </LayoutViewHeader>
 
       <LayoutViewContent>
         <ProxyDetail
@@ -242,6 +241,10 @@ export default function ProxyPage() {
           isUninstalling={uninstallationMutation.isPending}
           toolLinks={toolLinks}
           toolsLoading={toolsLoading}
+          onLibraryClick={() => router.push("/library")}
+          onServerClick={(serverId) =>
+            router.push(`/${params.proxyId}/mcp/${serverId}`)
+          }
         />
       </LayoutViewContent>
 
@@ -255,6 +258,7 @@ export default function ProxyPage() {
         tool={tool}
         isLoading={toolsLoading}
         onServerClick={handleServerClick}
+        onProxyClick={(proxyId) => router.push(`/${proxyId}`)}
       />
     </LayoutView>
   );

@@ -1,8 +1,11 @@
 "use client";
 import { useState } from "react";
 
-import { LayoutView, LayoutViewContent } from "@/components/layout/layout";
-import { LayoutNavigation } from "@/components/layout/navigation";
+import {
+  LayoutView,
+  LayoutViewContent,
+  LayoutViewHeader,
+} from "@/components/layout/layout";
 import {
   McpAddFormData,
   McpAddSheet,
@@ -40,11 +43,8 @@ export default function RegistryPage() {
     },
   );
 
-  const {
-    data: servers,
-    isLoading: serversLoading,
-    error: serversError,
-  } = trpc.store.getAll.useQuery();
+  const { data: servers, isLoading: serversLoading } =
+    trpc.store.getAll.useQuery();
 
   const utils = trpc.useUtils();
 
@@ -137,11 +137,7 @@ export default function RegistryPage() {
 
   return (
     <LayoutView>
-      <LayoutNavigation
-        servers={servers}
-        isLoading={serversLoading}
-        error={serversError?.message}
-      >
+      <LayoutViewHeader>
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -149,7 +145,8 @@ export default function RegistryPage() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-      </LayoutNavigation>
+      </LayoutViewHeader>
+
       <LayoutViewContent>
         <RegistryItemList
           entries={data.entries}
@@ -158,6 +155,7 @@ export default function RegistryPage() {
           onSearchChange={setSearchQuery}
           onPageChange={setPageIndex}
           onAddManual={() => setAddSheetOpen(true)}
+          onEntryClick={(entryName) => router.push(`/library/mcp/${entryName}`)}
           addManualButton={
             <McpAddSheet
               open={addSheetOpen}
@@ -166,6 +164,7 @@ export default function RegistryPage() {
               isLoadingProxies={serversLoading}
               onSubmit={handleAddServer}
               isSubmitting={addServerMutation.isPending}
+              onLibraryClick={() => router.push("/library")}
             >
               <Button>Add manually</Button>
             </McpAddSheet>

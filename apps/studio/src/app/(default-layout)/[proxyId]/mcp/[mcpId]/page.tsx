@@ -1,7 +1,10 @@
 "use client";
 
-import { LayoutView, LayoutViewContent } from "@/components/layout/layout";
-import { LayoutNavigation } from "@/components/layout/navigation";
+import {
+  LayoutView,
+  LayoutViewContent,
+  LayoutViewHeader,
+} from "@/components/layout/layout";
 import { McpToolSheet } from "@/components/mcp-servers/mcp-tool-sheet";
 import { McpServerDetail } from "@/components/pages/workspace-target-detail";
 import { ProxySkeleton } from "@/components/proxies/proxy-skeleton";
@@ -20,7 +23,6 @@ import { trpc } from "@/state/client";
 import { useInspectMcp } from "@/state/use-inspect-mcp";
 import { useProxy } from "@/state/use-proxy";
 import { proxyQuerySerializer, useProxyQuery } from "@/state/use-proxy-query";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -39,11 +41,6 @@ export default function McpServerPage() {
     serverId || undefined,
   );
   const tool = tools.find((tool) => tool.name === toolId);
-  const {
-    data: servers,
-    isLoading: serversLoading,
-    error: serversError,
-  } = trpc.store.getAll.useQuery();
 
   const registryEntryQuery = trpc.registry.getEntryByName.useQuery(
     {
@@ -127,22 +124,26 @@ export default function McpServerPage() {
           toolId: it.name,
           serverId: server,
         })}`,
+        onClick: () =>
+          setProxyQuery({
+            toolId: it.name,
+            serverId: server,
+          }),
         badges: undefined, // No badges needed since we're in a specific server context
       };
     });
 
   return (
     <LayoutView>
-      <LayoutNavigation
-        servers={servers}
-        isLoading={serversLoading}
-        error={serversError?.message}
-      >
+      <LayoutViewHeader>
         <Breadcrumb className="grow">
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href={`/${proxy.id}`}>{proxy?.name}</Link>
+              <BreadcrumbLink
+                onClick={() => router.push(`/${proxy.id}`)}
+                className="cursor-pointer"
+              >
+                {proxy?.name}
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -156,7 +157,7 @@ export default function McpServerPage() {
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
         />
-      </LayoutNavigation>
+      </LayoutViewHeader>
 
       <LayoutViewContent>
         <Container size="lg">
@@ -167,6 +168,7 @@ export default function McpServerPage() {
             description={description}
             toolLinks={toolLinks}
             toolsLoading={toolsLoading}
+            onProxyClick={(proxyId) => router.push(`/${proxyId}`)}
           />
         </Container>
       </LayoutViewContent>
@@ -181,6 +183,7 @@ export default function McpServerPage() {
         tool={tool}
         isLoading={toolsLoading}
         onServerClick={handleServerClick}
+        onProxyClick={(proxyId) => router.push(`/${proxyId}`)}
       />
     </LayoutView>
   );

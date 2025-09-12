@@ -1,7 +1,10 @@
 "use client";
 
-import { LayoutView, LayoutViewContent } from "@/components/layout/layout";
-import { LayoutNavigation } from "@/components/layout/navigation";
+import {
+  LayoutView,
+  LayoutViewContent,
+  LayoutViewHeader,
+} from "@/components/layout/layout";
 import {
   ProxyForm,
   ProxyFormButton,
@@ -27,7 +30,6 @@ import { useRouter } from "next/navigation";
 
 export default function NewProxyPage() {
   const router = useRouter();
-  const { data: servers, isLoading, error } = trpc.store.getAll.useQuery();
 
   const utils = trpc.useUtils();
   const mutation = trpc.store.create.useMutation({
@@ -47,11 +49,7 @@ export default function NewProxyPage() {
 
   return (
     <LayoutView>
-      <LayoutNavigation
-        servers={servers}
-        isLoading={isLoading}
-        error={error?.message}
-      >
+      <LayoutViewHeader>
         <Breadcrumb className="grow">
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -59,7 +57,7 @@ export default function NewProxyPage() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-      </LayoutNavigation>
+      </LayoutViewHeader>
 
       <LayoutViewContent>
         <Container size="sm">
