@@ -1,8 +1,8 @@
-import { Separator } from "@/components/ui/separator";
-import { textVariants } from "@/components/ui/typography";
-import { cn } from "@/helpers/cn";
 import { Slot } from "@radix-ui/react-slot";
 import { VariantProps } from "class-variance-authority";
+import { cn } from "../../helpers/cn";
+import { Separator } from "./separator";
+import { textVariants } from "./typography";
 
 interface SectionProps extends React.ComponentProps<"section"> {
   asChild?: boolean;

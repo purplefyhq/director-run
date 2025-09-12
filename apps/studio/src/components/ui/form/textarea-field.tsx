@@ -1,3 +1,5 @@
+import type { ComponentPropsWithoutRef } from "react";
+import { useFormContext } from "react-hook-form";
 import {
   FormControl,
   FormDescription,
@@ -5,9 +7,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import type { ComponentPropsWithoutRef } from "react";
-import { useFormContext } from "react-hook-form";
+} from "../form";
 import { Label } from "../label";
 import { Textarea } from "../textarea";
 import { CommonFieldProps } from "./types";

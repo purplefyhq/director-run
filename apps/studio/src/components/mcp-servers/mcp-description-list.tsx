@@ -1,20 +1,15 @@
 import { ComponentProps } from "react";
 
-import { StoreServerTransport } from "@/components/types";
-import {
-  Badge,
-  BadgeGroup,
-  BadgeIcon,
-  BadgeLabel,
-} from "@/components/ui/badge";
+import { GlobeIcon, TerminalIcon } from "@phosphor-icons/react";
+import { StoreServerTransport } from "../types";
+import { Badge, BadgeGroup, BadgeIcon, BadgeLabel } from "../ui/badge";
 import {
   List,
   ListItem,
   ListItemDescription,
   ListItemDetails,
   ListItemTitle,
-} from "@/components/ui/list";
-import { GlobeIcon, TerminalIcon } from "@phosphor-icons/react";
+} from "../ui/list";
 
 interface McpDescriptionListProps extends ComponentProps<typeof List> {
   transport: StoreServerTransport;

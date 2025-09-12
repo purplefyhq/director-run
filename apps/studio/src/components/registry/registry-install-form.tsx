@@ -1,9 +1,9 @@
-import { RegistryGetEntryByName, StoreGetAll } from "@/components/types";
-import { Button } from "@/components/ui/button";
-import { FormWithSchema } from "@/components/ui/form";
-import { InputField } from "@/components/ui/form/input-field";
-import { SelectNativeField } from "@/components/ui/form/select-native-field";
 import { z } from "zod";
+import { RegistryGetEntryByName, StoreGetAll } from "../types";
+import { Button } from "../ui/button";
+import { FormWithSchema } from "../ui/form";
+import { InputField } from "../ui/form/input-field";
+import { SelectNativeField } from "../ui/form/select-native-field";
 import { SimpleMarkdown } from "../ui/markdown";
 
 interface RegistryInstallFormProps {

@@ -1,25 +1,20 @@
 import { ComponentProps } from "react";
 
-import { RegistryGetEntryByName } from "@/components/types";
-import {
-  Badge,
-  BadgeGroup,
-  BadgeIcon,
-  BadgeLabel,
-} from "@/components/ui/badge";
+import { AsteriskIcon, TextTIcon } from "@phosphor-icons/react";
+import { RegistryGetEntryByName } from "../types";
+import { Badge, BadgeGroup, BadgeIcon, BadgeLabel } from "../ui/badge";
 import {
   EmptyState,
   EmptyStateDescription,
   EmptyStateTitle,
-} from "@/components/ui/empty-state";
+} from "../ui/empty-state";
 import {
   List,
   ListItem,
   ListItemDescription,
   ListItemDetails,
   ListItemTitle,
-} from "@/components/ui/list";
-import { AsteriskIcon, TextTIcon } from "@phosphor-icons/react";
+} from "../ui/list";
 
 interface RegistryParametersProps extends ComponentProps<typeof List> {
   parameters: RegistryGetEntryByName["parameters"];

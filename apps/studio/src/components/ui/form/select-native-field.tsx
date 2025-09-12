@@ -1,3 +1,6 @@
+import type { ComponentPropsWithoutRef } from "react";
+import { useFormContext } from "react-hook-form";
+import { cn } from "../../../helpers/cn";
 import {
   FormControl,
   FormDescription,
@@ -5,10 +8,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { cn } from "@/helpers/cn";
-import type { ComponentPropsWithoutRef } from "react";
-import { useFormContext } from "react-hook-form";
+} from "../form";
 import { Label } from "../label";
 import { SelectNative } from "../select-native";
 import { CommonFieldProps } from "./types";
