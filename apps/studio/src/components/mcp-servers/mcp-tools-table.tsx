@@ -1,40 +1,17 @@
 "use client";
-import { Badge, BadgeLabel } from "@/components/ui/badge";
-import { useInspectMcp } from "@/hooks/use-inspect-mcp";
-import { proxyQuerySerializer } from "@/hooks/use-proxy-query";
 import { ListOfLinks } from "../list-of-links";
 
 interface McpToolTableProps {
-  proxyId: string;
-  serverId?: string;
+  links: Array<{
+    title: string;
+    subtitle: string;
+    scroll: boolean;
+    href: string;
+    badges?: React.ReactNode;
+  }>;
+  isLoading: boolean;
 }
 
-export function McpToolsTable({ proxyId, serverId }: McpToolTableProps) {
-  const { isLoading, tools } = useInspectMcp(proxyId, serverId);
-
-  return (
-    <ListOfLinks
-      isLoading={isLoading}
-      links={tools
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((it) => {
-          const server = it.description?.match(/\[([^\]]+)\]/)?.[1];
-
-          return {
-            title: it.name,
-            subtitle: it.description?.replace(/\[([^\]]+)\]/g, ""),
-            scroll: false,
-            href: `${proxyQuerySerializer({
-              toolId: it.name,
-              serverId: server,
-            })}`,
-            badges: server && !serverId && (
-              <Badge>
-                <BadgeLabel uppercase>{server}</BadgeLabel>
-              </Badge>
-            ),
-          };
-        })}
-    />
-  );
+export function McpToolsTable({ links, isLoading }: McpToolTableProps) {
+  return <ListOfLinks isLoading={isLoading} links={links} />;
 }

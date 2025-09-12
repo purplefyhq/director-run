@@ -4,8 +4,8 @@ import * as AvatarPrimitive from "@radix-ui/react-avatar";
 import Image from "next/image";
 import { ComponentProps } from "react";
 
-import { cn } from "@/lib/cn";
-import { REGISTRY_URL } from "@/lib/urls";
+import { REGISTRY_URL } from "@/config";
+import { cn } from "@/helpers/cn";
 
 import McpImageSrc from "../../public/icons/mcp.svg";
 

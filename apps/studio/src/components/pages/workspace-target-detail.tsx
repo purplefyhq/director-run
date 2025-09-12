@@ -26,6 +26,14 @@ interface McpServerDetailProps {
     readme?: string;
   };
   description?: string | null;
+  toolLinks: Array<{
+    title: string;
+    subtitle: string;
+    scroll: boolean;
+    href: string;
+    badges?: React.ReactNode;
+  }>;
+  toolsLoading: boolean;
 }
 
 export function McpServerDetail({
@@ -33,6 +41,8 @@ export function McpServerDetail({
   proxy,
   entryData,
   description,
+  toolLinks,
+  toolsLoading,
 }: McpServerDetailProps) {
   return (
     <>
@@ -68,7 +78,7 @@ export function McpServerDetail({
           </SectionTitle>
         </SectionHeader>
 
-        <McpToolsTable proxyId={proxy.id} serverId={mcp.name} />
+        <McpToolsTable links={toolLinks} isLoading={toolsLoading} />
       </Section>
 
       <Section>

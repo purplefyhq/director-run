@@ -19,9 +19,10 @@ import { RegistryGetEntriesEntry } from "@/components/types";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { toast } from "@/components/ui/toast";
+import { DIRECTOR_URL } from "@/config";
 import { useZodForm } from "@/hooks/use-zod-form";
-import { DIRECTOR_URL } from "@/lib/urls";
-import { trpc } from "@/trpc/client";
+import { trpc } from "@/state/client";
+import { registryQuerySerializer } from "@/state/use-registry-query";
 import { ConfiguratorTarget } from "@director.run/client-configurator/index";
 import { useEffect, useState } from "react";
 import { SubmitHandler } from "react-hook-form";
@@ -231,6 +232,20 @@ export default function GetStartedPage() {
     });
   };
 
+  const toolLinks = selectedMcp
+    ? (selectedMcp.tools ?? [])
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((tool) => ({
+          title: tool.name,
+          subtitle: tool.description?.replace(/\[([^\]]+)\]/g, ""),
+          scroll: false,
+          href: registryQuerySerializer({
+            toolId: tool.name,
+            serverId: null,
+          }),
+        }))
+    : [];
+
   if (!hasData) {
     return <FullScreenLoader />;
   }
@@ -303,6 +318,7 @@ export default function GetStartedPage() {
             onFormSubmit={handleMcpFormSubmit}
             isFormSubmitting={transportMutation.isPending}
             isFormInstalling={installServerMutation.isPending}
+            toolLinks={toolLinks}
           />
         )}
       </Container>

@@ -303,12 +303,36 @@ export const Default: Story = {
     proxiesWithMcp: mockProxiesWithMcp,
     proxiesWithoutMcp: mockProxiesWithoutMcp,
     defaultProxyId: "production-proxy",
+    serverId: "production-proxy",
+    toolLinks: [
+      {
+        title: "search_repositories",
+        subtitle: "Search for repositories on GitHub",
+        scroll: false,
+        href: "#search_repositories",
+      },
+      {
+        title: "get_repository",
+        subtitle: "Get details about a specific repository",
+        scroll: false,
+        href: "#get_repository",
+      },
+      {
+        title: "create_issue",
+        subtitle: "Create a new issue in a repository",
+        scroll: false,
+        href: "#create_issue",
+      },
+    ],
     onInstall: async (values) => {
       console.log("Installing MCP server:", values);
       // Simulate installation delay
       await new Promise((resolve) => setTimeout(resolve, 2000));
     },
     isInstalling: false,
+    onCloseTool: () => {
+      console.log("Closing tool sheet");
+    },
   },
 };
 
@@ -331,10 +355,34 @@ export const NoProxiesAvailable: Story = {
     entry: mockEntry,
     proxiesWithMcp: mockProxiesWithMcp,
     proxiesWithoutMcp: [],
+    serverId: "production-proxy",
+    toolLinks: [
+      {
+        title: "search_repositories",
+        subtitle: "Search for repositories on GitHub",
+        scroll: false,
+        href: "#search_repositories",
+      },
+      {
+        title: "get_repository",
+        subtitle: "Get details about a specific repository",
+        scroll: false,
+        href: "#get_repository",
+      },
+      {
+        title: "create_issue",
+        subtitle: "Create a new issue in a repository",
+        scroll: false,
+        href: "#create_issue",
+      },
+    ],
     onInstall: async (values) => {
       await console.log("Installing MCP server:", values);
     },
     isInstalling: false,
+    onCloseTool: () => {
+      console.log("Closing tool sheet");
+    },
   },
 };
 
@@ -350,10 +398,34 @@ export const CommunityServer: Story = {
     },
     proxiesWithMcp: [],
     proxiesWithoutMcp: mockProxiesWithoutMcp,
+    serverId: "production-proxy",
+    toolLinks: [
+      {
+        title: "search_repositories",
+        subtitle: "Search for repositories on GitHub",
+        scroll: false,
+        href: "#search_repositories",
+      },
+      {
+        title: "get_repository",
+        subtitle: "Get details about a specific repository",
+        scroll: false,
+        href: "#get_repository",
+      },
+      {
+        title: "create_issue",
+        subtitle: "Create a new issue in a repository",
+        scroll: false,
+        href: "#create_issue",
+      },
+    ],
     onInstall: async (values) => {
       await console.log("Installing community MCP server:", values);
     },
     isInstalling: false,
+    onCloseTool: () => {
+      console.log("Closing tool sheet");
+    },
   },
 };
 
@@ -365,10 +437,34 @@ export const NoReadme: Story = {
     },
     proxiesWithMcp: mockProxiesWithMcp,
     proxiesWithoutMcp: mockProxiesWithoutMcp,
+    serverId: "production-proxy",
+    toolLinks: [
+      {
+        title: "search_repositories",
+        subtitle: "Search for repositories on GitHub",
+        scroll: false,
+        href: "#search_repositories",
+      },
+      {
+        title: "get_repository",
+        subtitle: "Get details about a specific repository",
+        scroll: false,
+        href: "#get_repository",
+      },
+      {
+        title: "create_issue",
+        subtitle: "Create a new issue in a repository",
+        scroll: false,
+        href: "#create_issue",
+      },
+    ],
     onInstall: async (values) => {
       await console.log("Installing MCP server:", values);
     },
     isInstalling: false,
+    onCloseTool: () => {
+      console.log("Closing tool sheet");
+    },
   },
 };
 
@@ -380,9 +476,14 @@ export const NoTools: Story = {
     },
     proxiesWithMcp: mockProxiesWithMcp,
     proxiesWithoutMcp: mockProxiesWithoutMcp,
+    serverId: "production-proxy",
+    toolLinks: [],
     onInstall: async (values) => {
       await console.log("Installing MCP server:", values);
     },
     isInstalling: false,
+    onCloseTool: () => {
+      console.log("Closing tool sheet");
+    },
   },
 };

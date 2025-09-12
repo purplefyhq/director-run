@@ -7,6 +7,7 @@ import { ProxyDetail } from "@/components/pages/workspace-detail";
 import { ProxyActionsDropdown } from "@/components/proxies/proxy-actions-dropdown";
 import { Client } from "@/components/proxies/proxy-installers";
 import { ProxySkeleton } from "@/components/proxies/proxy-skeleton";
+import { Badge, BadgeLabel } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,9 +15,11 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { toast } from "@/components/ui/toast";
-import { useProxy } from "@/hooks/use-proxy";
-import { DIRECTOR_URL } from "@/lib/urls";
-import { trpc } from "@/trpc/client";
+import { DIRECTOR_URL } from "@/config";
+import { trpc } from "@/state/client";
+import { useInspectMcp } from "@/state/use-inspect-mcp";
+import { useProxy } from "@/state/use-proxy";
+import { proxyQuerySerializer, useProxyQuery } from "@/state/use-proxy-query";
 import { ConfiguratorTarget } from "@director.run/client-configurator/index";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -60,6 +63,15 @@ export default function ProxyPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { proxy, isLoading, installers } = useProxy(params.proxyId);
+  const { toolId, serverId, setProxyQuery } = useProxyQuery();
+
+  // Find the server and tool data
+  const server = proxy?.servers.find((server) => server.name === serverId);
+  const { tools, isLoading: toolsLoading } = useInspectMcp(
+    params.proxyId,
+    serverId || undefined,
+  );
+  const tool = tools.find((tool) => tool.name === toolId);
   const {
     data: servers,
     isLoading: serversLoading,
@@ -151,6 +163,10 @@ export default function ProxyPage() {
     });
   };
 
+  const handleServerClick = (serverId: string) => {
+    router.push(`/${params.proxyId}/mcp/${serverId}`);
+  };
+
   useEffect(() => {
     if (!isLoading && !proxy) {
       toast({
@@ -164,6 +180,28 @@ export default function ProxyPage() {
   if (isLoading || !proxy) {
     return <ProxySkeleton />;
   }
+
+  // Generate toolLinks for the ProxyDetail component
+  const toolLinks = tools
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((it) => {
+      const server = it.description?.match(/\[([^\]]+)\]/)?.[1];
+
+      return {
+        title: it.name,
+        subtitle: it.description?.replace(/\[([^\]]+)\]/g, "") || "",
+        scroll: false,
+        href: `${proxyQuerySerializer({
+          toolId: it.name,
+          serverId: server,
+        })}`,
+        badges: server && (
+          <Badge>
+            <BadgeLabel uppercase>{server}</BadgeLabel>
+          </Badge>
+        ),
+      };
+    });
 
   return (
     <LayoutView>
@@ -202,10 +240,22 @@ export default function ProxyPage() {
           onUninstall={handleUninstall}
           isInstalling={installationMutation.isPending}
           isUninstalling={uninstallationMutation.isPending}
+          toolLinks={toolLinks}
+          toolsLoading={toolsLoading}
         />
       </LayoutViewContent>
 
-      <McpToolSheet proxyId={proxy.id} />
+      <McpToolSheet
+        open={serverId !== null && toolId !== null && !!server && !!proxy}
+        onOpenChange={() => setProxyQuery({ toolId: null, serverId: null })}
+        toolId={toolId}
+        serverId={serverId}
+        server={server}
+        proxy={proxy}
+        tool={tool}
+        isLoading={toolsLoading}
+        onServerClick={handleServerClick}
+      />
     </LayoutView>
   );
 }

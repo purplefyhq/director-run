@@ -32,24 +32,53 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useInspectMcp } from "@/hooks/use-inspect-mcp";
-import { useProxy } from "@/hooks/use-proxy";
-import { proxyQuerySerializer, useProxyQuery } from "@/hooks/use-proxy-query";
+import { Tool } from "@modelcontextprotocol/sdk/types.js";
 import Link from "next/link";
+
+export function McpToolSheet({
+  open,
+  onOpenChange,
+  toolId,
+  serverId,
+  server,
+  proxy,
+  tool,
+  isLoading,
+  onServerClick,
+}: McpToolSheetProps) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent>
+        {server && proxy && toolId && (
+          <SheetInner
+            toolId={toolId}
+            server={server}
+            proxy={proxy}
+            tool={tool}
+            isLoading={isLoading}
+            onServerClick={onServerClick}
+          />
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 function SheetInner({
   toolId,
   server,
   proxy,
+  tool,
+  isLoading,
+  onServerClick,
 }: {
   toolId: string;
   server: StoreServer;
   proxy: StoreGet;
+  tool: Tool | undefined;
+  isLoading: boolean;
+  onServerClick?: (serverId: string) => void;
 }) {
-  const { tools, isLoading } = useInspectMcp(proxy.id, server.name);
-
-  const tool = tools.find((tool) => tool.name === toolId);
-
   if (isLoading) {
     return (
       <>
@@ -98,10 +127,21 @@ function SheetInner({
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href={`/${proxy.id}/mcp/${server.name}`}>
-                  {server?.name}
-                </Link>
+              <BreadcrumbLink
+                asChild={!onServerClick}
+                onClick={
+                  onServerClick ? () => onServerClick(server.name) : undefined
+                }
+              >
+                {onServerClick ? (
+                  <button type="button" className="text-left">
+                    {server?.name}
+                  </button>
+                ) : (
+                  <Link href={`/${proxy.id}/mcp/${server.name}`}>
+                    {server?.name}
+                  </Link>
+                )}
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -117,12 +157,22 @@ function SheetInner({
           <SheetTitle>{tool.name}</SheetTitle>
           <SheetDescription className="text-sm">
             Installed from{" "}
-            <Link
-              href={`/${proxy.id}${proxyQuerySerializer({ serverId: server.name })}`}
-              className="text-fg"
-            >
-              {server?.name}
-            </Link>{" "}
+            {onServerClick ? (
+              <button
+                type="button"
+                onClick={() => onServerClick(server.name)}
+                className="text-fg hover:underline"
+              >
+                {server?.name}
+              </button>
+            ) : (
+              <Link
+                href={`/${proxy.id}?serverId=${server.name}`}
+                className="text-fg"
+              >
+                {server?.name}
+              </Link>
+            )}{" "}
             on{" "}
             <Link href={`/${proxy.id}`} className="text-fg">
               {proxy?.name}
@@ -159,25 +209,13 @@ function SheetInner({
 }
 
 interface McpToolSheetProps {
-  proxyId: string;
-}
-
-export function McpToolSheet({ proxyId }: McpToolSheetProps) {
-  const { toolId, serverId, setProxyQuery } = useProxyQuery();
-  const { proxy } = useProxy(proxyId);
-
-  const server = proxy?.servers.find((server) => server.name === serverId);
-
-  return (
-    <Sheet
-      open={serverId !== null && toolId !== null && !!server && !!proxy}
-      onOpenChange={() => setProxyQuery({ toolId: null, serverId: null })}
-    >
-      <SheetContent>
-        {server && proxy && toolId && (
-          <SheetInner toolId={toolId} server={server} proxy={proxy} />
-        )}
-      </SheetContent>
-    </Sheet>
-  );
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  toolId: string | null;
+  serverId: string | null;
+  server: StoreServer | undefined;
+  proxy: StoreGet | undefined;
+  tool: Tool | undefined;
+  isLoading: boolean;
+  onServerClick?: (serverId: string) => void;
 }

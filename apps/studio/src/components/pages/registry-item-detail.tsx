@@ -40,11 +40,19 @@ interface RegistryItemDetailProps {
   proxiesWithoutMcp: StoreGetAll;
   selectedTool?: NonNullable<RegistryGetEntryByName["tools"]>[number];
   defaultProxyId?: string;
+  serverId: string | null;
   onInstall: (values: {
     proxyId: string;
     parameters: Record<string, string>;
   }) => Promise<void>;
   isInstalling?: boolean;
+  onCloseTool: () => void;
+  toolLinks: Array<{
+    title: string;
+    subtitle: string;
+    scroll: boolean;
+    href: string;
+  }>;
 }
 
 export function RegistryItemDetail({
@@ -53,8 +61,11 @@ export function RegistryItemDetail({
   proxiesWithoutMcp,
   selectedTool,
   defaultProxyId,
+  serverId,
   onInstall,
   isInstalling = false,
+  onCloseTool,
+  toolLinks,
 }: RegistryItemDetailProps) {
   return (
     <>
@@ -133,7 +144,7 @@ export function RegistryItemDetail({
                       <h3>Tools</h3>
                     </SectionTitle>
                   </SectionHeader>
-                  <RegistryTools tools={entry.tools ?? []} />
+                  <RegistryTools links={toolLinks} />
                 </Section>
               </TabsContent>
 
@@ -218,6 +229,7 @@ export function RegistryItemDetail({
           tool={selectedTool}
           mcpName={entry.title}
           mcpId={entry.name}
+          onClose={onCloseTool}
         />
       )}
     </>

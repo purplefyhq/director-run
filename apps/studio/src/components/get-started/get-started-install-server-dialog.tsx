@@ -8,8 +8,8 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { SubmitHandler } from "react-hook-form";
 import { z } from "zod";
+import { cn } from "../../helpers/cn";
 import { useZodForm } from "../../hooks/use-zod-form";
-import { cn } from "../../lib/cn";
 import { McpLogo } from "../mcp-logo";
 import { McpDescriptionList } from "../mcp-servers/mcp-description-list";
 import { RegistryParameters } from "../registry/registry-parameters";
@@ -60,6 +60,12 @@ type GetStartedInstallServerDialogProps = {
   onOpenChange?: (open: boolean) => void;
   entryData?: RegistryGetEntryByName | null;
   isLoading?: boolean;
+  toolLinks: Array<{
+    title: string;
+    subtitle: string;
+    scroll: boolean;
+    href: string;
+  }>;
 };
 
 // Presentational component - no state management or tRPC calls
@@ -161,6 +167,7 @@ function GetStartedInstallServerDialogPresentation({
   onFormSubmit,
   isFormSubmitting,
   isFormInstalling,
+  toolLinks,
 }: GetStartedInstallServerDialogProps & {
   onFormSubmit: SubmitHandler<{
     proxyId: string;
@@ -252,7 +259,7 @@ function GetStartedInstallServerDialogPresentation({
                         <h3>Tools</h3>
                       </SectionTitle>
                     </SectionHeader>
-                    <RegistryTools tools={mcp.tools ?? []} />
+                    <RegistryTools links={toolLinks} />
                   </Section>
                 </TabsContent>
 
@@ -328,6 +335,7 @@ export function GetStartedInstallServerDialog({
   onFormSubmit,
   isFormSubmitting,
   isFormInstalling,
+  toolLinks,
 }: GetStartedInstallServerDialogProps & {
   onFormSubmit: SubmitHandler<{
     proxyId: string;
@@ -348,6 +356,7 @@ export function GetStartedInstallServerDialog({
       onFormSubmit={onFormSubmit}
       isFormSubmitting={isFormSubmitting}
       isFormInstalling={isFormInstalling}
+      toolLinks={toolLinks}
     />
   );
 }

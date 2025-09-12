@@ -16,8 +16,10 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Container } from "@/components/ui/container";
 import { toast } from "@/components/ui/toast";
-import { useProxy } from "@/hooks/use-proxy";
-import { trpc } from "@/trpc/client";
+import { trpc } from "@/state/client";
+import { useInspectMcp } from "@/state/use-inspect-mcp";
+import { useProxy } from "@/state/use-proxy";
+import { proxyQuerySerializer, useProxyQuery } from "@/state/use-proxy-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -28,6 +30,15 @@ export default function McpServerPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { proxy, isLoading } = useProxy(params.proxyId);
+  const { toolId, serverId, setProxyQuery } = useProxyQuery();
+
+  // Find the server and tool data
+  const server = proxy?.servers.find((server) => server.name === serverId);
+  const { tools, isLoading: toolsLoading } = useInspectMcp(
+    params.proxyId,
+    serverId || undefined,
+  );
+  const tool = tools.find((tool) => tool.name === toolId);
   const {
     data: servers,
     isLoading: serversLoading,
@@ -68,6 +79,10 @@ export default function McpServerPage() {
     });
   };
 
+  const handleServerClick = (serverId: string) => {
+    router.push(`/${params.proxyId}/mcp/${serverId}`);
+  };
+
   useEffect(() => {
     if (!isLoading && (!proxy || !mcp)) {
       toast({
@@ -97,6 +112,24 @@ export default function McpServerPage() {
     typeof (entryData as { description: string }).description === "string"
       ? (entryData as { description: string }).description
       : null;
+
+  // Generate toolLinks for the McpServerDetail component
+  const toolLinks = tools
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((it) => {
+      const server = it.description?.match(/\[([^\]]+)\]/)?.[1];
+
+      return {
+        title: it.name,
+        subtitle: it.description?.replace(/\[([^\]]+)\]/g, "") || "",
+        scroll: false,
+        href: `${proxyQuerySerializer({
+          toolId: it.name,
+          serverId: server,
+        })}`,
+        badges: undefined, // No badges needed since we're in a specific server context
+      };
+    });
 
   return (
     <LayoutView>
@@ -132,11 +165,23 @@ export default function McpServerPage() {
             proxy={proxy}
             entryData={entryData}
             description={description}
+            toolLinks={toolLinks}
+            toolsLoading={toolsLoading}
           />
         </Container>
       </LayoutViewContent>
 
-      <McpToolSheet proxyId={proxy.id} />
+      <McpToolSheet
+        open={serverId !== null && toolId !== null && !!server && !!proxy}
+        onOpenChange={() => setProxyQuery({ toolId: null, serverId: null })}
+        toolId={toolId}
+        serverId={serverId}
+        server={server}
+        proxy={proxy}
+        tool={tool}
+        isLoading={toolsLoading}
+        onServerClick={handleServerClick}
+      />
     </LayoutView>
   );
 }

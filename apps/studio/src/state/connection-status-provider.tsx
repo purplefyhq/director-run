@@ -1,17 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-import { useIsClient } from "@/hooks/use-is-client";
-import { createCtx } from "@/lib/create-ctx";
-import { trpc } from "@/trpc/client";
-import { ConnectionEmptyState } from "../components/connect/connection-empty-state";
-import { ConnectionLostDialog } from "../components/connect/connection-lost-dialog";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Logo } from "@/components/ui/logo";
+import { trpc } from "@/state/client";
 import cliPackage from "@director.run/cli/package.json";
+import { useEffect, useState } from "react";
+import { createContext, useContext } from "react";
+import { ConnectionEmptyState } from "../components/connect/connection-empty-state";
 import { ConnectionUpdateState } from "../components/connect/connection-update-state";
 
-const [useContext, ContextProvider] = createCtx<{
+function ConnectionLostDialog() {
+  const { lostConnection } = useConnectionStatus();
+
+  return (
+    <Dialog open={lostConnection}>
+      <DialogContent dismissable={false}>
+        <DialogHeader>
+          <Logo className="mb-3" />
+          <DialogTitle>Director has lost connection</DialogTitle>
+          <DialogDescription>
+            Please check that the service is running.
+          </DialogDescription>
+        </DialogHeader>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const [useCtx, CtxProvider] = createCtx<{
   connected: boolean;
   lostConnection: boolean;
   dependencies: {
@@ -86,7 +108,7 @@ export function ConnectionStatusProvider({
   }
 
   return (
-    <ContextProvider
+    <CtxProvider
       value={{
         connected,
         lostConnection,
@@ -103,8 +125,48 @@ export function ConnectionStatusProvider({
       ) : (
         <ConnectionEmptyState />
       )}
-    </ContextProvider>
+    </CtxProvider>
   );
 }
 
-export const useConnectionStatus = useContext;
+export const useConnectionStatus = useCtx;
+
+/**
+ * A helper to create a Context and Provider with no upfront default value, and
+ * without having to check for undefined all the time.
+ * @link https://react-typescript-cheatsheet.netlify.app/docs/basic/getting-started/context/
+ */
+function createCtx<T extends object>(name: string) {
+  const ctx = createContext<T | undefined>(undefined);
+
+  function useCtx() {
+    const c = useContext(ctx);
+    if (c === undefined) {
+      throw new Error(
+        `use${name} must be inside a ${name}Provider with a value`,
+      );
+    }
+    return c;
+  }
+  function Provider(props: {
+    children: React.ReactNode;
+    value: T;
+  }) {
+    return <ctx.Provider value={props.value}>{props.children}</ctx.Provider>;
+  }
+
+  return [useCtx, Provider] as const; // 'as const' makes TypeScript infer a tuple
+}
+
+let hasEverMounted = false;
+
+function useIsClient() {
+  const [isClient, setClient] = useState(hasEverMounted);
+
+  useEffect(() => {
+    setClient(true);
+    hasEverMounted = true;
+  }, []);
+
+  return isClient;
+}

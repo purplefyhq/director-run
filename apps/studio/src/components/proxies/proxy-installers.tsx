@@ -2,8 +2,8 @@ import Image from "next/image";
 
 import { Switch } from "../ui/switch";
 
-import { cn } from "@/lib/cn";
-import { DIRECTOR_URL } from "@/lib/urls";
+import { DIRECTOR_URL } from "@/config";
+import { cn } from "@/helpers/cn";
 import { ConfiguratorTarget } from "@director.run/client-configurator/index";
 import { ArrowUpRightIcon } from "@phosphor-icons/react";
 

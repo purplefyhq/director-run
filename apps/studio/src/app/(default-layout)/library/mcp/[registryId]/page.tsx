@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/popover";
 import { toast } from "@/components/ui/toast";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
-import { useRegistryQuery } from "@/hooks/use-registry-query";
-import { trpc } from "@/trpc/client";
+import { trpc } from "@/state/client";
+import { useRegistryQuery } from "@/state/use-registry-query";
+import { registryQuerySerializer } from "@/state/use-registry-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -30,7 +31,7 @@ import { useEffect, useState } from "react";
 export default function RegistryEntryPage() {
   const router = useRouter();
   const { registryId } = useParams<{ registryId: string }>();
-  const { toolId, serverId } = useRegistryQuery();
+  const { toolId, serverId, setRegistryQuery } = useRegistryQuery();
   const [_, copy] = useCopyToClipboard();
   const [installFormOpen, setInstallFormOpen] = useState(false);
 
@@ -87,6 +88,10 @@ export default function RegistryEntryPage() {
     });
   };
 
+  const handleCloseTool = () => {
+    setRegistryQuery({ toolId: null, serverId });
+  };
+
   useEffect(() => {
     if (!isLoading && !entry) {
       toast({
@@ -115,6 +120,18 @@ export default function RegistryEntryPage() {
         return it.name === entry.name;
       }),
   );
+
+  const toolLinks = (entry.tools ?? [])
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((tool) => ({
+      title: tool.name,
+      subtitle: tool.description?.replace(/\[([^\]]+)\]/g, ""),
+      scroll: false,
+      href: registryQuerySerializer({
+        toolId: tool.name,
+        serverId,
+      }),
+    }));
 
   return (
     <LayoutView>
@@ -165,8 +182,11 @@ export default function RegistryEntryPage() {
           proxiesWithoutMcp={proxiesWithoutMcp}
           selectedTool={selectedTool}
           defaultProxyId={serverId ?? undefined}
+          serverId={serverId}
           onInstall={handleInstall}
           isInstalling={installMutation.isPending}
+          onCloseTool={handleCloseTool}
+          toolLinks={toolLinks}
         />
       </LayoutViewContent>
     </LayoutView>

@@ -40,6 +40,14 @@ interface ProxyDetailProps {
   onUninstall: (proxyId: string, client: ConfiguratorTarget) => void;
   isInstalling: boolean;
   isUninstalling: boolean;
+  toolLinks: Array<{
+    title: string;
+    subtitle: string;
+    scroll: boolean;
+    href: string;
+    badges?: React.ReactNode;
+  }>;
+  toolsLoading: boolean;
 }
 
 export function ProxyDetail({
@@ -52,6 +60,8 @@ export function ProxyDetail({
   onUninstall,
   isInstalling,
   isUninstalling,
+  toolLinks,
+  toolsLoading,
 }: ProxyDetailProps) {
   const [_, copy] = useCopyToClipboard();
 
@@ -132,7 +142,7 @@ export function ProxyDetail({
             <h2>Tools</h2>
           </SectionTitle>
         </SectionHeader>
-        <McpToolsTable proxyId={proxy.id} />
+        <McpToolsTable links={toolLinks} isLoading={toolsLoading} />
       </Section>
     </Container>
   );

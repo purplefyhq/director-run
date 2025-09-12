@@ -124,12 +124,35 @@ const mockMemTransport: StoreServerTransport = {
   type: "mem",
 };
 
+const mockToolLinks = [
+  {
+    title: "search_repositories",
+    subtitle: "Search for repositories on GitHub",
+    scroll: false,
+    href: "/dev-proxy/mcp/github-mcp#search_repositories",
+  },
+  {
+    title: "get_repository",
+    subtitle: "Get details about a specific repository",
+    scroll: false,
+    href: "/dev-proxy/mcp/github-mcp#get_repository",
+  },
+  {
+    title: "create_issue",
+    subtitle: "Create a new issue in a repository",
+    scroll: false,
+    href: "/dev-proxy/mcp/github-mcp#create_issue",
+  },
+];
+
 export const Default: Story = {
   args: {
     mcp: mockMcp,
     proxy: mockProxy,
     entryData: mockEntryData,
     description: mockDescription,
+    toolLinks: mockToolLinks,
+    toolsLoading: false,
   },
 };
 
