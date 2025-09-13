@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@source "../src/**/*.{js,ts,jsx,tsx,mdx}";
+@source "../../studio/src/**/*.{js,ts,jsx,tsx,mdx}";
+
 @plugin "tailwindcss-radix";
 
 @custom-variant dark (&:is(.dark *));
