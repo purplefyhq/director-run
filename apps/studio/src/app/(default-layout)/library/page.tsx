@@ -17,7 +17,6 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
 } from "../../../components/ui/breadcrumb";
-import { Button } from "../../../components/ui/button";
 import { EmptyStateDescription } from "../../../components/ui/empty-state";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { EmptyStateTitle } from "../../../components/ui/empty-state";
@@ -41,8 +40,7 @@ export default function RegistryPage() {
     },
   );
 
-  const { data: servers, isLoading: serversLoading } =
-    trpc.store.getAll.useQuery();
+  const { data: servers } = trpc.store.getAll.useQuery();
 
   const utils = trpc.useUtils();
 
@@ -69,6 +67,16 @@ export default function RegistryPage() {
   const handleAddServer = async (data: McpAddFormData) => {
     const server = data.server;
 
+    if (!data.proxyId) {
+      toast({
+        title: "No proxy selected",
+        description: "Please select a proxy before adding a server.",
+      });
+      return;
+    }
+
+    const proxyId = data.proxyId;
+
     if (server.transport.type === "stdio") {
       const env = data._env.reduce(
         (acc, [key, value]) => {
@@ -82,7 +90,7 @@ export default function RegistryPage() {
       const args = server.transport.command.split(" ").slice(1).join(" ");
 
       await addServerMutation.mutateAsync({
-        proxyId: data.proxyId,
+        proxyId,
         server: {
           name: data.server.name,
           transport: {
@@ -103,7 +111,7 @@ export default function RegistryPage() {
       );
 
       await addServerMutation.mutateAsync({
-        proxyId: data.proxyId,
+        proxyId,
         server: {
           name: data.server.name,
           transport: {
@@ -150,23 +158,18 @@ export default function RegistryPage() {
           entries={data.entries}
           pagination={data.pagination}
           searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchQueryChange={setSearchQuery}
           onPageChange={setPageIndex}
-          onAddManual={() => setAddSheetOpen(true)}
+          onManualAddClick={() => setAddSheetOpen(true)}
           onEntryClick={(entryName) => router.push(`/library/mcp/${entryName}`)}
-          addManualButton={
-            <McpAddSheet
-              open={addSheetOpen}
-              onOpenChange={setAddSheetOpen}
-              proxies={servers ?? []}
-              isLoadingProxies={serversLoading}
-              onSubmit={handleAddServer}
-              isSubmitting={addServerMutation.isPending}
-              onLibraryClick={() => router.push("/library")}
-            >
-              <Button>Add manually</Button>
-            </McpAddSheet>
-          }
+        />
+
+        <McpAddSheet
+          open={addSheetOpen}
+          onOpenChange={setAddSheetOpen}
+          proxies={servers}
+          onSubmit={handleAddServer}
+          isSubmitting={addServerMutation.isPending}
         />
       </LayoutViewContent>
     </LayoutView>

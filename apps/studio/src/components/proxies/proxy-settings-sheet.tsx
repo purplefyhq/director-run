@@ -1,6 +1,5 @@
-import type { ReactNode } from "react";
-
 import type { StoreGet } from "../types";
+import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import {
   Sheet,
@@ -10,13 +9,11 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "../ui/sheet";
 import { ProxyForm } from "./proxy-form";
 import type { ProxyFormData } from "./proxy-form";
 
 interface ProxySettingsSheetProps {
-  children: ReactNode;
   proxy: StoreGet;
   onSubmit: (values: ProxyFormData) => Promise<void>;
   isSubmitting?: boolean;
@@ -25,7 +22,6 @@ interface ProxySettingsSheetProps {
 }
 
 export function ProxySettingsSheet({
-  children,
   proxy,
   onSubmit,
   isSubmitting = false,
@@ -34,8 +30,6 @@ export function ProxySettingsSheet({
 }: ProxySettingsSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetTrigger asChild>{children}</SheetTrigger>
-
       <SheetContent>
         <SheetActions />
         <SheetBody>
@@ -56,9 +50,7 @@ export function ProxySettingsSheet({
             onSubmit={onSubmit}
             isSubmitting={isSubmitting}
           >
-            <button type="submit" className="self-start">
-              {isSubmitting ? "Saving..." : "Save changes"}
-            </button>
+            <Button>Save changes</Button>
           </ProxyForm>
         </SheetBody>
       </SheetContent>

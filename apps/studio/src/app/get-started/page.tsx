@@ -1,6 +1,7 @@
 "use client";
 
 import { ConfiguratorTarget } from "@director.run/client-configurator/index";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { SubmitHandler } from "react-hook-form";
 import { GetStartedCompleteDialog } from "../../components/get-started/get-started-complete-dialog";
@@ -27,6 +28,7 @@ interface Steps {
 export type ClientId = "claude" | "cursor" | "vscode";
 
 export default function GetStartedPage() {
+  const router = useRouter();
   // Search and proxy state
   const [searchQuery, setSearchQuery] = useState("");
   const [currentProxyId, setCurrentProxyId] = useState<string | null>(null);
@@ -215,19 +217,18 @@ export default function GetStartedPage() {
   return (
     <>
       <GetStartedPageView
-        currentProxy={currentProxy}
+        currentWorkspace={currentProxy}
         registryEntries={registryEntriesQuery.data?.entries ?? []}
         clientStatuses={listClientsQuery.data ?? []}
-        isInstallingClient={installationMutation.isPending}
-        createProxyIsPending={createProxyMutation.isPending}
-        onCreateProxy={handleProxySubmit}
+        isAddingWorkspaceToClient={installationMutation.isPending}
+        isCreateWorkspaceLoading={createProxyMutation.isPending}
+        onCreateWorkspace={handleProxySubmit}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
-        onMcpSelect={handleMcpSelect}
-        onInstallClient={handleClientInstall}
+        onClickRegistryEntry={handleMcpSelect}
+        onAddWorkspaceToClient={handleClientInstall}
       />
 
-      {/* MCP Install Dialog */}
       {selectedMcp && (
         <GetStartedInstallServerDialog
           registryEntry={entryQuery.data}
@@ -235,11 +236,15 @@ export default function GetStartedPage() {
           onClickInstall={handleClickInstall}
           isInstalling={installServerMutation.isPending}
           open={isInstallDialogOpen}
-          onClickClose={() => setIsInstallDialogOpen(false)}
+          onOpenChange={setIsInstallDialogOpen}
         />
       )}
 
-      <GetStartedCompleteDialog open={isCompleted} />
+      <GetStartedCompleteDialog
+        open={isCompleted}
+        onClickLibrary={() => router.push("/library")}
+        onClickWorkspace={() => router.push("/")}
+      />
     </>
   );
 }

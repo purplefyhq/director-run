@@ -7,9 +7,16 @@ import {
   LayoutViewContent,
   LayoutViewHeader,
 } from "../../../../../components/layout/layout";
-import { RegistryItemDetail } from "../../../../../components/pages/registry-item-detail";
+import { RegistryItem } from "../../../../../components/registry-item";
+import { RegistryItemAddForm } from "../../../../../components/registry-item-add-form";
 import { RegistryEntrySkeleton } from "../../../../../components/registry/registry-entry-skeleton";
 import { RegistryInstallForm } from "../../../../../components/registry/registry-install-form";
+import { RegistryToolSheet } from "../../../../../components/registry/registry-tool-sheet";
+import {
+  SplitView,
+  SplitViewMain,
+  SplitViewSide,
+} from "../../../../../components/split-view";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,6 +26,7 @@ import {
   BreadcrumbSeparator,
 } from "../../../../../components/ui/breadcrumb";
 import { Button } from "../../../../../components/ui/button";
+import { Container } from "../../../../../components/ui/container";
 import {
   Popover,
   PopoverContent,
@@ -28,7 +36,6 @@ import { toast } from "../../../../../components/ui/toast";
 import { useCopyToClipboard } from "../../../../../hooks/use-copy-to-clipboard";
 import { trpc } from "../../../../../state/client";
 import { useRegistryQuery } from "../../../../../state/use-registry-query";
-import { registryQuerySerializer } from "../../../../../state/use-registry-query";
 
 export default function RegistryEntryPage() {
   const router = useRouter();
@@ -70,8 +77,9 @@ export default function RegistryEntryPage() {
   const entry = entryQuery.data;
 
   const handleInstall = async (values: {
-    proxyId: string;
-    parameters: Record<string, string>;
+    proxyId?: string;
+    entryId: string;
+    parameters?: Record<string, string>;
   }) => {
     if (!entry) {
       return;
@@ -79,15 +87,17 @@ export default function RegistryEntryPage() {
 
     const transport = await transportMutation.mutateAsync({
       entryName: entry.name,
-      parameters: values.parameters,
+      parameters: values.parameters ?? {},
     });
-    installMutation.mutate({
-      proxyId: values.proxyId,
-      server: {
-        name: entry.name,
-        transport,
-      },
-    });
+    if (values.proxyId) {
+      installMutation.mutate({
+        proxyId: values.proxyId,
+        server: {
+          name: entry.name,
+          transport,
+        },
+      });
+    }
   };
 
   const handleCloseTool = () => {
@@ -110,35 +120,14 @@ export default function RegistryEntryPage() {
 
   const selectedTool = entry.tools?.find((tool) => tool.name === toolId);
 
-  const proxiesWithMcp = (storeQuery.data ?? [])?.filter((proxy) =>
-    proxy.servers.find((it) => {
-      return it.name === entry.name;
-    }),
-  );
+  const proxies = storeQuery.data ?? [];
+  const entryInstalledOn = proxies
+    .filter((proxy) => proxy.servers.some((it) => it.name === entry.name))
+    .map((p) => p.id);
 
-  const proxiesWithoutMcp = (storeQuery.data ?? [])?.filter(
-    (proxy) =>
-      !proxy.servers.find((it) => {
-        return it.name === entry.name;
-      }),
-  );
-
-  const toolLinks = (entry.tools ?? [])
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((tool) => ({
-      title: tool.name,
-      subtitle: tool.description?.replace(/\[([^\]]+)\]/g, ""),
-      scroll: false,
-      href: registryQuerySerializer({
-        toolId: tool.name,
-        serverId,
-      }),
-      onClick: () =>
-        setRegistryQuery({
-          toolId: tool.name,
-          serverId,
-        }),
-    }));
+  const handleToolClick = (toolName: string) => {
+    setRegistryQuery({ toolId: toolName, serverId });
+  };
 
   return (
     <LayoutView>
@@ -172,9 +161,17 @@ export default function RegistryEntryPage() {
           >
             <RegistryInstallForm
               mcp={entry}
-              proxies={proxiesWithoutMcp}
+              proxies={proxies.filter(
+                (proxy) => !proxy.servers.some((it) => it.name === entry.name),
+              )}
               defaultProxyId={serverId ?? undefined}
-              onSubmit={handleInstall}
+              onSubmit={(values) =>
+                handleInstall({
+                  proxyId: values.proxyId,
+                  entryId: entry.id as unknown as string,
+                  parameters: values.parameters,
+                })
+              }
               isSubmitting={installMutation.isPending}
             />
           </PopoverContent>
@@ -182,23 +179,33 @@ export default function RegistryEntryPage() {
       </LayoutViewHeader>
 
       <LayoutViewContent>
-        <RegistryItemDetail
-          entry={entry}
-          proxiesWithMcp={proxiesWithMcp}
-          proxiesWithoutMcp={proxiesWithoutMcp}
-          selectedTool={selectedTool}
-          defaultProxyId={serverId ?? undefined}
-          serverId={serverId}
-          onInstall={handleInstall}
-          isInstalling={installMutation.isPending}
-          onCloseTool={handleCloseTool}
-          toolLinks={toolLinks}
-          onProxyServerClick={(proxyId, serverName) =>
-            router.push(`/${proxyId}/mcp/${serverName}`)
-          }
-          onLibraryClick={() => router.push("/library")}
-          onMcpClick={(mcpId) => router.push(`/library/mcp/${mcpId}`)}
-        />
+        <Container size="xl">
+          <SplitView>
+            <SplitViewMain>
+              <RegistryItem
+                entry={entry}
+                onToolClick={(tool) => handleToolClick(tool.name)}
+              />
+            </SplitViewMain>
+            <SplitViewSide>
+              <RegistryItemAddForm
+                entry={entry}
+                proxies={proxies}
+                entryInstalledOn={entryInstalledOn}
+                onClickInstall={handleInstall}
+                isInstalling={installMutation.isPending}
+              />
+            </SplitViewSide>
+          </SplitView>
+        </Container>
+
+        {selectedTool && (
+          <RegistryToolSheet
+            tool={selectedTool}
+            mcpName={entry.title}
+            onClose={handleCloseTool}
+          />
+        )}
       </LayoutViewContent>
     </LayoutView>
   );

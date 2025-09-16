@@ -1,10 +1,19 @@
-import { RegistryItemDetail } from "@director.run/studio/components/pages/registry-item-detail.tsx";
+import { RegistryItemAddForm } from "@director.run/studio/components/registry-item-add-form.tsx";
+import { RegistryItem } from "@director.run/studio/components/registry-item.tsx";
+import { RegistryToolSheet } from "@director.run/studio/components/registry/registry-tool-sheet.tsx";
+import {
+  SplitView,
+  SplitViewMain,
+  SplitViewSide,
+} from "@director.run/studio/components/split-view.tsx";
 import type { StoreGetAll } from "@director.run/studio/components/types.ts";
+import { Container } from "@director.run/studio/components/ui/container.tsx";
 import { mockRegistryEntry } from "@director.run/studio/test/fixtures/registry/entry.ts";
 import type { Meta, StoryObj } from "@storybook/react";
+import { useState } from "react";
 import { withLayoutView } from "../helpers/decorators";
 
-const mockProxiesWithMcp: StoreGetAll = [
+const mockProxies: StoreGetAll = [
   {
     id: "dev-proxy",
     name: "Development Proxy",
@@ -25,35 +34,55 @@ const mockProxiesWithMcp: StoreGetAll = [
   },
 ];
 
-const mockProxiesWithoutMcp: StoreGetAll = [
-  {
-    id: "production-proxy",
-    name: "Production Proxy",
-    description: "Production environment proxy",
-    prompts: undefined,
-    targets: [],
-    servers: [],
-    path: "/ws/production-proxy",
-  },
-  {
-    id: "test-proxy",
-    name: "Test Proxy",
-    description: "Testing environment proxy",
-    prompts: undefined,
-    targets: [],
-    servers: [],
-    path: "/ws/test-proxy",
-  },
-];
+const RegistryItemDetailComponent = ({
+  entry,
+  proxies,
+  entryInstalledOn,
+  onClickInstall,
+  isInstalling,
+  onToolClick,
+  onProxyServerClick,
+}: {
+  entry: typeof mockRegistryEntry;
+  proxies?: StoreGetAll;
+  entryInstalledOn?: string[];
+  onClickInstall: (params: {
+    proxyId?: string;
+    entryId: string;
+    parameters?: Record<string, string>;
+  }) => Promise<void>;
+  isInstalling?: boolean;
+  onToolClick?: (
+    tool: NonNullable<typeof mockRegistryEntry.tools>[number],
+  ) => void;
+  onProxyServerClick?: (proxyId: string, serverName: string) => void;
+}) => (
+  <Container size="xl">
+    <SplitView>
+      <SplitViewMain>
+        <RegistryItem entry={entry} onToolClick={onToolClick} />
+      </SplitViewMain>
+      <SplitViewSide>
+        <RegistryItemAddForm
+          entry={entry}
+          proxies={proxies}
+          entryInstalledOn={entryInstalledOn}
+          onClickInstall={onClickInstall}
+          isInstalling={isInstalling}
+        />
+      </SplitViewSide>
+    </SplitView>
+  </Container>
+);
 
 const meta = {
   title: "pages/registry/detail",
-  component: RegistryItemDetail,
+  component: RegistryItemDetailComponent,
   parameters: {
     layout: "fullscreen",
   },
   decorators: [withLayoutView],
-} satisfies Meta<typeof RegistryItemDetail>;
+} satisfies Meta<typeof RegistryItemDetailComponent>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -61,32 +90,58 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     entry: mockRegistryEntry,
-    proxiesWithMcp: mockProxiesWithMcp,
-    proxiesWithoutMcp: mockProxiesWithoutMcp,
-    defaultProxyId: "production-proxy",
-    serverId: "production-proxy",
-    toolLinks:
-      mockRegistryEntry?.tools?.map((tool) => ({
-        title: tool.name,
-        subtitle: tool.description,
-        scroll: false,
-        href: `#${tool.name}`,
-      })) ?? [],
-    onInstall: async (values) => {
+    proxies: mockProxies,
+    entryInstalledOn: ["dev-proxy"],
+    onClickInstall: async (values) => {
       console.log("Installing MCP server:", values);
       // Simulate installation delay
       await new Promise((resolve) => setTimeout(resolve, 2000));
     },
     isInstalling: false,
-    onCloseTool: () => {
-      console.log("Closing tool sheet");
-    },
   },
 };
 
 export const WithToolSelected: Story = {
   args: {
     ...Default.args,
-    selectedTool: mockRegistryEntry.tools?.[0],
+  },
+  render: (args) => {
+    const [selectedToolName, setSelectedToolName] = useState<string | null>(
+      mockRegistryEntry.tools?.[0]?.name ?? null,
+    );
+    const selectedTool = mockRegistryEntry.tools?.find(
+      (t) => t.name === selectedToolName,
+    );
+
+    return (
+      <>
+        <Container size="xl">
+          <SplitView>
+            <SplitViewMain>
+              <RegistryItem
+                entry={mockRegistryEntry}
+                onToolClick={(tool) => setSelectedToolName(tool.name)}
+              />
+            </SplitViewMain>
+            <SplitViewSide>
+              <RegistryItemAddForm
+                entry={mockRegistryEntry}
+                proxies={mockProxies}
+                entryInstalledOn={["dev-proxy"]}
+                onClickInstall={args.onClickInstall || (async () => {})}
+                isInstalling={args.isInstalling || false}
+              />
+            </SplitViewSide>
+          </SplitView>
+        </Container>
+        {selectedTool && (
+          <RegistryToolSheet
+            tool={selectedTool}
+            mcpName={mockRegistryEntry.title}
+            onClose={() => setSelectedToolName(null)}
+          />
+        )}
+      </>
+    );
   },
 };

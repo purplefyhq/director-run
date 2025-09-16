@@ -1,11 +1,10 @@
-import { MinusIcon, PlusIcon } from "@phosphor-icons/react";
-import type { ComponentProps, ReactNode } from "react";
+import { PlusIcon, TrashIcon } from "@phosphor-icons/react";
+import { type ComponentProps } from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { z } from "zod";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -25,12 +24,11 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "../ui/sheet";
 
-export const requiredStringSchema = z.string().trim().min(1, "Required");
+const requiredStringSchema = z.string().trim().min(1, "Required");
 
-export const slugStringSchema = z
+const slugStringSchema = z
   .string()
   .trim()
   .min(1, "Required")
@@ -39,34 +37,34 @@ export const slugStringSchema = z
     "Only lowercase ASCII letters, digits, and characters ., -, _ are allowed",
   );
 
-export const httpTransportSchema = z.object({
+const httpTransportSchema = z.object({
   type: z.literal("http"),
   url: requiredStringSchema.url(),
   headers: z.record(requiredStringSchema, z.string()).optional(),
 });
 
-export type HTTPTransport = z.infer<typeof httpTransportSchema>;
+type HTTPTransport = z.infer<typeof httpTransportSchema>;
 
-export const stdioTransportSchema = z.object({
+const stdioTransportSchema = z.object({
   type: z.literal("stdio"),
   command: requiredStringSchema,
   args: z.array(z.string()),
   env: z.record(requiredStringSchema, z.string()).optional(),
 });
 
-export type STDIOTransport = z.infer<typeof stdioTransportSchema>;
+type STDIOTransport = z.infer<typeof stdioTransportSchema>;
 
-export const proxyTransport = z.discriminatedUnion("type", [
+const proxyTransport = z.discriminatedUnion("type", [
   httpTransportSchema,
   stdioTransportSchema,
 ]);
 
-export const ProxyTargetSourceSchema = z.object({
+const ProxyTargetSourceSchema = z.object({
   name: z.literal("registry"),
   entryId: requiredStringSchema,
 });
 
-export const proxyTargetAttributesSchema = z.object({
+const proxyTargetAttributesSchema = z.object({
   name: slugStringSchema,
   transport: proxyTransport,
   source: ProxyTargetSourceSchema.optional(),
@@ -103,7 +101,7 @@ const nonEmptyTupleSchema = z
   );
 
 const formSchema = z.object({
-  proxyId: requiredStringSchema,
+  proxyId: z.string().optional(),
   server: proxyTargetAttributesSchema,
   _env: nonEmptyTupleSchema,
   _headers: nonEmptyTupleSchema,
@@ -117,27 +115,21 @@ interface Proxy {
 }
 
 interface McpAddSheetProps extends ComponentProps<typeof Sheet> {
-  children?: ReactNode;
-  proxies: Proxy[];
-  isLoadingProxies?: boolean;
+  proxies?: Proxy[];
   onSubmit: (data: McpAddFormData) => Promise<void>;
   isSubmitting?: boolean;
-  onLibraryClick?: () => void;
 }
 
 export function McpAddSheet({
-  children,
   open,
   onOpenChange,
   proxies,
-  isLoadingProxies = false,
   onSubmit,
   isSubmitting = false,
-  onLibraryClick,
   ...props
 }: McpAddSheetProps) {
   const defaultValues = {
-    proxyId: proxies[0]?.id ?? "",
+    proxyId: proxies?.[0]?.id ?? undefined,
     server: {
       name: "",
       transport: {
@@ -153,18 +145,12 @@ export function McpAddSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} {...props}>
-      {children && <SheetTrigger asChild>{children}</SheetTrigger>}
       <SheetContent>
         <SheetActions>
           <Breadcrumb className="grow">
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink
-                  onClick={onLibraryClick}
-                  className="cursor-pointer"
-                >
-                  Library
-                </BreadcrumbLink>
+                <BreadcrumbPage>Library</BreadcrumbPage>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
@@ -187,7 +173,6 @@ export function McpAddSheet({
           <McpAddForm
             defaultValues={defaultValues}
             proxies={proxies}
-            isLoadingProxies={isLoadingProxies}
             onSubmit={onSubmit}
             isSubmitting={isSubmitting}
           />
@@ -199,16 +184,14 @@ export function McpAddSheet({
 
 interface McpAddFormProps {
   defaultValues: McpAddFormData;
-  proxies: Proxy[];
-  isLoadingProxies?: boolean;
+  proxies?: Proxy[];
   onSubmit: (data: McpAddFormData) => Promise<void>;
   isSubmitting?: boolean;
 }
 
-export function McpAddForm({
+function McpAddForm({
   defaultValues,
   proxies,
-  isLoadingProxies = false,
   onSubmit,
   isSubmitting = false,
 }: McpAddFormProps) {
@@ -218,43 +201,38 @@ export function McpAddForm({
       defaultValues={defaultValues}
       onSubmit={onSubmit}
     >
-      <McpAddFormFields
-        proxies={proxies}
-        isLoadingProxies={isLoadingProxies}
-        isSubmitting={isSubmitting}
-      />
+      <McpAddFormFields proxies={proxies} isSubmitting={isSubmitting} />
     </FormWithSchema>
   );
 }
 
 interface McpAddFormFieldsProps {
-  proxies: Proxy[];
-  isLoadingProxies?: boolean;
+  proxies?: Proxy[];
   isSubmitting?: boolean;
 }
 
-export function McpAddFormFields({
+function McpAddFormFields({
   proxies,
-  isLoadingProxies = false,
   isSubmitting = false,
 }: McpAddFormFieldsProps) {
+  const { control } = useFormContext();
+  const transportType = useWatch({
+    control,
+    name: "server.transport.type",
+    defaultValue: "stdio",
+  });
+
   return (
     <>
-      <SelectNativeField
-        name="proxyId"
-        label="Proxy"
-        disabled={isLoadingProxies}
-      >
-        {isLoadingProxies ? (
-          <option value="">Loading…</option>
-        ) : (
-          proxies.map((proxy) => (
+      {proxies && (
+        <SelectNativeField name="proxyId" label="Proxy">
+          {proxies.map((proxy) => (
             <option key={proxy.id} value={proxy.id}>
               {proxy.name}
             </option>
-          ))
-        )}
-      </SelectNativeField>
+          ))}
+        </SelectNativeField>
+      )}
 
       <div className="flex flex-row gap-x-2 [&>div]:flex-1">
         <InputField
@@ -268,7 +246,8 @@ export function McpAddFormFields({
         </SelectNativeField>
       </div>
 
-      <McpAddFormTransportFields />
+      {transportType === "stdio" && <McpAddFormStdioFields />}
+      {transportType === "http" && <McpAddFormHttpFields />}
 
       <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? "Adding..." : "Add MCP Server"}
@@ -277,25 +256,7 @@ export function McpAddFormFields({
   );
 }
 
-export function McpAddFormTransportFields() {
-  const { control } = useFormContext();
-  const transportType = useWatch({
-    control,
-    name: "server.transport.type",
-    defaultValue: "stdio",
-  });
-
-  console.log("Current transport type:", transportType);
-
-  return (
-    <>
-      {transportType === "stdio" && <McpAddFormStdioFields />}
-      {transportType === "http" && <McpAddFormHttpFields />}
-    </>
-  );
-}
-
-export function McpAddFormStdioFields() {
+function McpAddFormStdioFields() {
   return (
     <div className="space-y-4">
       <TextareaField
@@ -307,13 +268,18 @@ export function McpAddFormStdioFields() {
 
       <div className="flex flex-col gap-y-2">
         <Label>Environment variables</Label>
-        <McpAddFormEnvFields />
+        <KeyValueFieldArray
+          name="_env"
+          keyPlaceholder="Variable name"
+          valuePlaceholder="Value"
+          addSrText="Add environment variable"
+        />{" "}
       </div>
     </div>
   );
 }
 
-export function McpAddFormHttpFields() {
+function McpAddFormHttpFields() {
   return (
     <div className="space-y-4">
       <InputField
@@ -324,23 +290,36 @@ export function McpAddFormHttpFields() {
 
       <div className="flex flex-col gap-y-2">
         <Label>Headers</Label>
-        <McpAddFormHeaderFields />
+        <KeyValueFieldArray
+          name="_headers"
+          keyPlaceholder="Header name"
+          valuePlaceholder="Value"
+          addSrText="Add header"
+        />
       </div>
     </div>
   );
 }
 
-export function McpAddFormEnvFields() {
+function KeyValueFieldArray({
+  name,
+  keyPlaceholder,
+  valuePlaceholder,
+  addSrText,
+}: {
+  name: string;
+  keyPlaceholder: string;
+  valuePlaceholder: string;
+  addSrText: string;
+}) {
   const { control } = useFormContext();
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "_env",
+    name,
   });
 
   const handleAdd = () => {
-    console.log("Adding env field, current fields length:", fields.length);
     append(["", ""]);
-    console.log("After append, fields length should be:", fields.length + 1);
   };
 
   return (
@@ -348,16 +327,14 @@ export function McpAddFormEnvFields() {
       {fields.map((field, index) => (
         <div key={field.id} className="flex flex-row gap-x-2 [&>div]:flex-1">
           <InputField
-            name={`_env.${index}.0`}
-            placeholder="Variable name"
-            defaultValue=""
+            name={`${name}.${index}.0`}
+            placeholder={keyPlaceholder}
           />
           <InputField
-            name={`_env.${index}.1`}
-            placeholder="Value"
-            defaultValue=""
+            name={`${name}.${index}.1`}
+            placeholder={valuePlaceholder}
           />
-          {fields.length > 1 ? (
+          {index < fields.length - 1 ? (
             <Button
               className="size-8 leading-8"
               type="button"
@@ -365,69 +342,23 @@ export function McpAddFormEnvFields() {
               size="icon"
               onClick={() => remove(index)}
             >
-              <MinusIcon />
+              <TrashIcon />
               <div className="sr-only">Remove</div>
             </Button>
           ) : (
-            <div className="size-8" />
-          )}
-        </div>
-      ))}
-      <Button type="button" variant="secondary" size="sm" onClick={handleAdd}>
-        <PlusIcon className="mr-2 size-4" />
-        Add environment variable
-      </Button>
-    </div>
-  );
-}
-
-export function McpAddFormHeaderFields() {
-  const { control } = useFormContext();
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "_headers",
-  });
-
-  const handleAdd = () => {
-    console.log("Adding header field, current fields length:", fields.length);
-    append(["", ""]);
-    console.log("After append, fields length should be:", fields.length + 1);
-  };
-
-  return (
-    <div className="space-y-2">
-      {fields.map((field, index) => (
-        <div key={field.id} className="flex flex-row gap-x-2 [&>div]:flex-1">
-          <InputField
-            name={`_headers.${index}.0`}
-            placeholder="Header name"
-            defaultValue=""
-          />
-          <InputField
-            name={`_headers.${index}.1`}
-            placeholder="Value"
-            defaultValue=""
-          />
-          {fields.length > 1 ? (
             <Button
               className="size-8 leading-8"
               type="button"
               variant="secondary"
               size="icon"
-              onClick={() => remove(index)}
+              onClick={handleAdd}
             >
-              <MinusIcon />
-              <div className="sr-only">Remove</div>
+              <PlusIcon />
+              <div className="sr-only">{addSrText}</div>
             </Button>
-          ) : (
-            <div className="size-8" />
           )}
         </div>
       ))}
-      <Button type="button" variant="secondary" size="sm" onClick={handleAdd}>
-        <PlusIcon className="mr-2 size-4" />
-        Add header
-      </Button>
     </div>
   );
 }

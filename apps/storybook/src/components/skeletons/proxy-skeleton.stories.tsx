@@ -1,13 +1,13 @@
-import { FullScreenLoader } from "@director.run/studio/components/pages/global/loader.tsx";
+import { ProxySkeleton } from "@director.run/studio/components/proxies/proxy-skeleton.tsx";
 import type { Meta, StoryObj } from "@storybook/react";
 
 const meta = {
-  title: "components/global-loader",
-  component: FullScreenLoader,
+  title: "components/skeletons/proxy-skeleton",
+  component: ProxySkeleton,
   parameters: {
     layout: "fullscreen",
   },
-} satisfies Meta<typeof FullScreenLoader>;
+} satisfies Meta<typeof ProxySkeleton>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
