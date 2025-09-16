@@ -1,10 +1,10 @@
 import { McpServerDetail } from "@director.run/studio/components/pages/workspace-target-detail.tsx";
 import type { StoreServerTransport } from "@director.run/studio/components/types.ts";
 import type { Meta, StoryObj } from "@storybook/react";
-import { withLayoutView } from "../../helpers/decorators";
+import { withLayoutView } from "../helpers/decorators";
 
 const meta = {
-  title: "workspace/target-detail",
+  title: "pages/workspaces/target/detail",
   component: McpServerDetail,
   parameters: {
     layout: "fullscreen",

@@ -1,13 +1,15 @@
+import { ProxyDetail } from "@director.run/studio/components/pages/workspace-detail.tsx";
+import type { ConfiguratorTarget } from "@director.run/studio/components/types.ts";
 import type { Meta, StoryObj } from "@storybook/react";
-import { ConfiguratorTarget } from "../types";
-import { ProxyDetail } from "./workspace-detail";
+import { withLayoutView } from "../helpers/decorators";
 
 const meta = {
-  title: "pages/ProxyDetail",
+  title: "pages/workspaces/detail",
   component: ProxyDetail,
   parameters: {
     layout: "fullscreen",
   },
+  decorators: [withLayoutView],
 } satisfies Meta<typeof ProxyDetail>;
 
 export default meta;

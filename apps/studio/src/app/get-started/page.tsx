@@ -4,23 +4,12 @@ import { ConfiguratorTarget } from "@director.run/client-configurator/index";
 import { useEffect, useState } from "react";
 import type { SubmitHandler } from "react-hook-form";
 import { GetStartedCompleteDialog } from "../../components/get-started/get-started-complete-dialog";
-import { GetStartedHeader } from "../../components/get-started/get-started-header";
 import { GetStartedInstallServerDialog } from "../../components/get-started/get-started-install-server-dialog";
-import { GetStartedInstallers } from "../../components/get-started/get-started-installers";
-import {
-  GetStartedList,
-  GetStartedListItem,
-} from "../../components/get-started/get-started-list";
-import { GetStartedMcpServerList } from "../../components/get-started/get-started-mcp-server-list";
-import {
-  GetStartedProxyForm,
-  proxySchema,
-} from "../../components/get-started/get-started-proxy-form";
+import { proxySchema } from "../../components/get-started/get-started-proxy-form";
 import type { FormValues as ProxyFormValues } from "../../components/get-started/get-started-proxy-form";
+import { GetStartedPageView } from "../../components/pages/get-started";
 import { FullScreenLoader } from "../../components/pages/global/loader";
 import type { RegistryGetEntriesEntry } from "../../components/types";
-import { Container } from "../../components/ui/container";
-import { Section } from "../../components/ui/section";
 import { toast } from "../../components/ui/toast";
 import { DIRECTOR_URL } from "../../config";
 import { useZodForm } from "../../hooks/use-zod-form";
@@ -35,25 +24,7 @@ interface Steps {
   connect: StepStatus;
 }
 
-const clients = [
-  {
-    id: "claude",
-    label: "Claude",
-    image: "/icons/claude-icon.png",
-  },
-  {
-    id: "cursor",
-    label: "Cursor",
-    image: "/icons/cursor-icon.png",
-  },
-  {
-    id: "vscode",
-    label: "VSCode",
-    image: "/icons/code-icon.png",
-  },
-];
-
-export type ClientId = (typeof clients)[number]["id"];
+export type ClientId = "claude" | "cursor" | "vscode";
 
 export default function GetStartedPage() {
   // Search and proxy state
@@ -61,12 +32,10 @@ export default function GetStartedPage() {
   const [currentProxyId, setCurrentProxyId] = useState<string | null>(null);
 
   // Installer state
-  const [selectedClient, setSelectedClient] = useState<ClientId | undefined>(
-    undefined,
-  );
   const [selectedMcp, setSelectedMcp] =
     useState<RegistryGetEntriesEntry | null>(null);
   const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   // tRPC utils
   const utils = trpc.useUtils();
@@ -128,6 +97,7 @@ export default function GetStartedPage() {
         title: "Proxy installed",
         description: `This proxy was successfully installed`,
       });
+      setIsCompleted(true);
     },
     onError: (error) => {
       toast({
@@ -166,26 +136,8 @@ export default function GetStartedPage() {
   const hasData = proxyListQuery.data && registryEntriesQuery.data;
   const hasProxy = proxyListQuery.data && proxyListQuery.data.length > 0;
   const currentProxy = hasProxy ? proxyListQuery.data[0] : null;
-  const hasServers = (currentProxy?.servers.length ?? 0) > 0;
   const hasInstallers =
     installersQuery.data && Object.values(installersQuery.data).some(Boolean);
-
-  // Step logic
-  const steps: Steps = {
-    create: hasProxy ? "completed" : "in-progress",
-    add: hasProxy ? (hasServers ? "completed" : "in-progress") : "not-started",
-    connect:
-      hasProxy && hasServers
-        ? hasInstallers
-          ? "completed"
-          : "in-progress"
-        : "not-started",
-  };
-
-  const isCompleted =
-    steps.create === "completed" &&
-    steps.add === "completed" &&
-    steps.connect === "completed";
 
   // Event handlers
   const handleProxySubmit: SubmitHandler<ProxyFormValues> = async (values) => {
@@ -228,6 +180,20 @@ export default function GetStartedPage() {
     });
   };
 
+  const handleClickInstall = async () => {
+    if (!selectedMcp || !currentProxy?.id) {
+      return;
+    }
+    const transport = await transportMutation.mutateAsync({
+      entryName: selectedMcp.name,
+      parameters: {},
+    });
+    installServerMutation.mutate({
+      proxyId: currentProxy.id,
+      server: { name: selectedMcp.name, transport },
+    });
+  };
+
   const toolLinks = selectedMcp
     ? (selectedMcp.tools ?? [])
         .sort((a, b) => a.name.localeCompare(b.name))
@@ -248,76 +214,31 @@ export default function GetStartedPage() {
 
   return (
     <>
-      <Container size="sm" className="py-12 lg:py-16">
-        <Section className="gap-y-8">
-          <GetStartedHeader
-            title="Get started"
-            description="Let's get you started with MCP using Director."
-          />
+      <GetStartedPageView
+        currentProxy={currentProxy}
+        registryEntries={registryEntriesQuery.data?.entries ?? []}
+        clientStatuses={listClientsQuery.data ?? []}
+        isInstallingClient={installationMutation.isPending}
+        createProxyIsPending={createProxyMutation.isPending}
+        onCreateProxy={handleProxySubmit}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        onMcpSelect={handleMcpSelect}
+        onInstallClient={handleClientInstall}
+      />
 
-          <GetStartedList>
-            <GetStartedListItem
-              status={steps.create}
-              title="Create an MCP Proxy Server"
-              disabled={steps.create === "completed"}
-              open={steps.create === "in-progress"}
-            >
-              <div className="py-4 pr-4 pl-11.5">
-                <GetStartedProxyForm
-                  form={proxyForm}
-                  isPending={createProxyMutation.isPending}
-                  onSubmit={handleProxySubmit}
-                />
-              </div>
-            </GetStartedListItem>
-            <GetStartedListItem
-              status={steps.add}
-              title="Add your first MCP server"
-              open={steps.add === "in-progress"}
-              disabled={steps.add !== "in-progress"}
-            >
-              <GetStartedMcpServerList
-                searchQuery={searchQuery}
-                onSearchQueryChange={setSearchQuery}
-                registryEntries={registryEntriesQuery.data?.entries ?? []}
-                onMcpSelect={handleMcpSelect}
-              />
-            </GetStartedListItem>
-            <GetStartedListItem
-              status={steps.connect}
-              title="Connect your first client"
-              open={steps.connect === "in-progress"}
-              disabled={steps.connect !== "in-progress"}
-            >
-              <GetStartedInstallers
-                selectedClient={selectedClient}
-                onClientSelect={setSelectedClient}
-                availableClients={listClientsQuery.data ?? []}
-                clients={clients}
-                isLoading={listClientsQuery.isLoading}
-                isInstalling={installationMutation.isPending}
-                onInstall={handleClientInstall}
-              />
-            </GetStartedListItem>
-          </GetStartedList>
-        </Section>
+      {/* MCP Install Dialog */}
+      {selectedMcp && (
+        <GetStartedInstallServerDialog
+          registryEntry={entryQuery.data}
+          isRegistryEntryLoading={entryQuery.isLoading}
+          onClickInstall={handleClickInstall}
+          isInstalling={installServerMutation.isPending}
+          open={isInstallDialogOpen}
+          onClickClose={() => setIsInstallDialogOpen(false)}
+        />
+      )}
 
-        {/* MCP Install Dialog */}
-        {selectedMcp && (
-          <GetStartedInstallServerDialog
-            mcp={selectedMcp}
-            proxyId={currentProxy?.id ?? ""}
-            open={isInstallDialogOpen}
-            onOpenChange={setIsInstallDialogOpen}
-            entryData={entryQuery.data}
-            isLoading={entryQuery.isLoading}
-            onFormSubmit={handleMcpFormSubmit}
-            isFormSubmitting={transportMutation.isPending}
-            isFormInstalling={installServerMutation.isPending}
-            toolLinks={toolLinks}
-          />
-        )}
-      </Container>
       <GetStartedCompleteDialog open={isCompleted} />
     </>
   );
