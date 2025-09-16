@@ -8,7 +8,7 @@ import {
   LayoutViewHeader,
 } from "../../../../../components/layout/layout";
 import { McpToolSheet } from "../../../../../components/mcp-servers/mcp-tool-sheet";
-import { McpServerDetail } from "../../../../../components/pages/workspace-target-detail";
+import { WorkspaceTargetDetail } from "../../../../../components/pages/workspace-target-detail";
 import { ProxySkeleton } from "../../../../../components/proxies/proxy-skeleton";
 import { WorkspaceTargetDetailDropDownMenu } from "../../../../../components/proxies/workspace-target-detail-dropdown-menu";
 import {
@@ -19,7 +19,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "../../../../../components/ui/breadcrumb";
-import { Container } from "../../../../../components/ui/container";
 import { toast } from "../../../../../components/ui/toast";
 import { trpc } from "../../../../../state/client";
 import { useInspectMcp } from "../../../../../state/use-inspect-mcp";
@@ -163,17 +162,15 @@ export default function McpServerPage() {
       </LayoutViewHeader>
 
       <LayoutViewContent>
-        <Container size="lg">
-          <McpServerDetail
-            mcp={mcp}
-            proxy={proxy}
-            entryData={entryData}
-            description={description}
-            toolLinks={toolLinks}
-            toolsLoading={toolsLoading}
-            onProxyClick={(proxyId) => router.push(`/${proxyId}`)}
-          />
-        </Container>
+        <WorkspaceTargetDetail
+          mcp={mcp}
+          proxy={proxy}
+          entryData={entryData}
+          description={description}
+          toolLinks={toolLinks}
+          toolsLoading={toolsLoading}
+          onProxyClick={(proxyId) => router.push(`/${proxyId}`)}
+        />
       </LayoutViewContent>
 
       <McpToolSheet

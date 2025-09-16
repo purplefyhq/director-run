@@ -1,7 +1,8 @@
 import { McpLogo } from "../mcp-logo";
 import { McpDescriptionList } from "../mcp-servers/mcp-description-list";
 import { McpToolsTable } from "../mcp-servers/mcp-tools-table";
-import type { StoreServerTransport } from "../types";
+import type { MasterRegistryEntry, StoreServerTransport } from "../types";
+import { Container } from "../ui/container";
 import { EmptyState, EmptyStateTitle } from "../ui/empty-state";
 import { Markdown } from "../ui/markdown";
 import {
@@ -11,7 +12,7 @@ import {
   SectionTitle,
 } from "../ui/section";
 
-interface McpServerDetailProps {
+interface WorkspaceTargetDetailProps {
   mcp: {
     name: string;
     transport: StoreServerTransport;
@@ -20,10 +21,7 @@ interface McpServerDetailProps {
     id: string;
     name: string;
   };
-  entryData: {
-    icon?: string;
-    readme?: string;
-  };
+  entryData: Pick<MasterRegistryEntry, "icon" | "readme">;
   description?: string | null;
   toolLinks: Array<{
     title: string;
@@ -36,7 +34,7 @@ interface McpServerDetailProps {
   onProxyClick?: (proxyId: string) => void;
 }
 
-export function McpServerDetail({
+export function WorkspaceTargetDetail({
   mcp,
   proxy,
   entryData,
@@ -44,9 +42,9 @@ export function McpServerDetail({
   toolLinks,
   toolsLoading,
   onProxyClick,
-}: McpServerDetailProps) {
+}: WorkspaceTargetDetailProps) {
   return (
-    <>
+    <Container size="lg">
       <Section>
         <McpLogo src={entryData?.icon} className="size-9" />
         <SectionHeader>
@@ -101,6 +99,6 @@ export function McpServerDetail({
           </EmptyState>
         )}
       </Section>
-    </>
+    </Container>
   );
 }
