@@ -1,28 +1,25 @@
 import type { GatewayRouterOutputs } from "@director.run/gateway/client";
 
-export type RegistryGetEntries = GatewayRouterOutputs["registry"]["getEntries"];
-
-export type RegistryGetEntriesEntry = RegistryGetEntries["entries"][number];
-
-export type MasterRegistryEntry =
-  GatewayRouterOutputs["registry"]["getEntryByName"];
-
-export type MasterRegistryEntryList =
+// Registry
+export type RegistryEntryList =
   GatewayRouterOutputs["registry"]["getEntries"]["entries"];
 
-export type MasterWorkspace = GatewayRouterOutputs["store"]["get"];
+export type RegistryEntryDetail =
+  GatewayRouterOutputs["registry"]["getEntryByName"];
 
-export type MasterWorkspaceTarget = MasterWorkspace["targets"][number];
+// Workspace
+export type WorkspaceList = GatewayRouterOutputs["store"]["getAll"];
+export type WorkspaceDetail = GatewayRouterOutputs["store"]["get"];
+export type WorkspaceTarget =
+  GatewayRouterOutputs["store"]["get"]["targets"][number];
 
-export type MasterMCPTool = NonNullable<MasterRegistryEntry["tools"]>[number];
+// MCP
+export type MCPTool = NonNullable<RegistryEntryDetail["tools"]>[number];
 
-export type StoreGetAll = GatewayRouterOutputs["store"]["getAll"];
-
-export type StoreGet = MasterWorkspace;
-
-export type StoreServer = StoreGet["servers"][number];
-
-export type StoreServerTransport = StoreServer["transport"];
+// Trash
+export type DeprecatedRegistryEntryListItem =
+  GatewayRouterOutputs["registry"]["getEntries"]["entries"][number]; // TODO: Remove this type
+export type DeprecatedWorkspaceTargetTransport = WorkspaceTarget["transport"];
 
 export enum ConfiguratorTarget {
   Claude = "claude",

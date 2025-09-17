@@ -10,20 +10,12 @@ import { proxySchema } from "../../components/get-started/get-started-proxy-form
 import type { FormValues as ProxyFormValues } from "../../components/get-started/get-started-proxy-form";
 import { GetStartedPageView } from "../../components/pages/get-started";
 import { FullScreenLoader } from "../../components/pages/global/loader";
-import type { RegistryGetEntriesEntry } from "../../components/types";
+import type { DeprecatedRegistryEntryListItem } from "../../components/types";
 import { toast } from "../../components/ui/toast";
 import { DIRECTOR_URL } from "../../config";
 import { useZodForm } from "../../hooks/use-zod-form";
 import { trpc } from "../../state/client";
 import { registryQuerySerializer } from "../../state/use-registry-query";
-
-type StepStatus = "not-started" | "in-progress" | "completed";
-
-interface Steps {
-  create: StepStatus;
-  add: StepStatus;
-  connect: StepStatus;
-}
 
 export type ClientId = "claude" | "cursor" | "vscode";
 
@@ -35,7 +27,7 @@ export default function GetStartedPage() {
 
   // Installer state
   const [selectedMcp, setSelectedMcp] =
-    useState<RegistryGetEntriesEntry | null>(null);
+    useState<DeprecatedRegistryEntryListItem | null>(null);
   const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
 
@@ -157,7 +149,7 @@ export default function GetStartedPage() {
     });
   };
 
-  const handleMcpSelect = (mcp: RegistryGetEntriesEntry) => {
+  const handleMcpSelect = (mcp: DeprecatedRegistryEntryListItem) => {
     setSelectedMcp(mcp);
     setIsInstallDialogOpen(true);
   };
