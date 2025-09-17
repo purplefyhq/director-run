@@ -10,12 +10,10 @@ import { proxySchema } from "../../components/get-started/get-started-proxy-form
 import type { FormValues as ProxyFormValues } from "../../components/get-started/get-started-proxy-form";
 import { GetStartedPageView } from "../../components/pages/get-started";
 import { FullScreenLoader } from "../../components/pages/global/loader";
-import type { DeprecatedRegistryEntryListItem } from "../../components/types";
 import { toast } from "../../components/ui/toast";
 import { DIRECTOR_URL } from "../../config";
 import { useZodForm } from "../../hooks/use-zod-form";
 import { trpc } from "../../state/client";
-import { registryQuerySerializer } from "../../state/use-registry-query";
 
 export type ClientId = "claude" | "cursor" | "vscode";
 
@@ -26,8 +24,9 @@ export default function GetStartedPage() {
   const [currentProxyId, setCurrentProxyId] = useState<string | null>(null);
 
   // Installer state
-  const [selectedMcp, setSelectedMcp] =
-    useState<DeprecatedRegistryEntryListItem | null>(null);
+  const [selectedRegistryEntryName, setSelectedRegistryEntryName] = useState<
+    string | null
+  >(null);
   const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
 
@@ -60,10 +59,10 @@ export default function GetStartedPage() {
   const listClientsQuery = trpc.installer.allClients.useQuery();
   const entryQuery = trpc.registry.getEntryByName.useQuery(
     {
-      name: selectedMcp?.name || "",
+      name: selectedRegistryEntryName || "",
     },
     {
-      enabled: !!selectedMcp && isInstallDialogOpen,
+      enabled: !!selectedRegistryEntryName && isInstallDialogOpen,
     },
   );
 
@@ -149,58 +148,33 @@ export default function GetStartedPage() {
     });
   };
 
-  const handleMcpSelect = (mcp: DeprecatedRegistryEntryListItem) => {
-    setSelectedMcp(mcp);
+  const handleMcpSelect = (entry: { name: string }) => {
+    setSelectedRegistryEntryName(entry.name);
     setIsInstallDialogOpen(true);
   };
 
-  const handleMcpFormSubmit: SubmitHandler<{
-    proxyId: string;
-    parameters: Record<string, string>;
-  }> = async (values) => {
-    if (!selectedMcp) {
+  const handleMcpFormSubmit = async (values: {
+    proxyId?: string;
+    entryId: string;
+    parameters?: Record<string, string>;
+  }) => {
+    if (!selectedRegistryEntryName) {
       return;
     }
     const transport = await transportMutation.mutateAsync({
-      entryName: selectedMcp.name,
-      parameters: values.parameters,
+      entryName: selectedRegistryEntryName,
+      parameters: values.parameters ?? {},
     });
-    installServerMutation.mutate({
-      proxyId: values.proxyId,
-      server: {
-        name: selectedMcp.name,
-        transport,
-      },
-    });
-  };
-
-  const handleClickInstall = async () => {
-    if (!selectedMcp || !currentProxy?.id) {
-      return;
+    if (values.proxyId) {
+      installServerMutation.mutate({
+        proxyId: values.proxyId,
+        server: {
+          name: selectedRegistryEntryName,
+          transport,
+        },
+      });
     }
-    const transport = await transportMutation.mutateAsync({
-      entryName: selectedMcp.name,
-      parameters: {},
-    });
-    installServerMutation.mutate({
-      proxyId: currentProxy.id,
-      server: { name: selectedMcp.name, transport },
-    });
   };
-
-  const toolLinks = selectedMcp
-    ? (selectedMcp.tools ?? [])
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((tool) => ({
-          title: tool.name,
-          subtitle: tool.description?.replace(/\[([^\]]+)\]/g, ""),
-          scroll: false,
-          href: registryQuerySerializer({
-            toolId: tool.name,
-            serverId: null,
-          }),
-        }))
-    : [];
 
   if (!hasData) {
     return <FullScreenLoader />;
@@ -221,11 +195,13 @@ export default function GetStartedPage() {
         onAddWorkspaceToClient={handleClientInstall}
       />
 
-      {selectedMcp && (
+      {selectedRegistryEntryName && (
         <GetStartedInstallServerDialog
           registryEntry={entryQuery.data}
           isRegistryEntryLoading={entryQuery.isLoading}
-          onClickInstall={handleClickInstall}
+          proxies={proxyListQuery.data}
+          entryInstalledOn={[]} // No existing installations in get-started flow
+          onClickInstall={handleMcpFormSubmit}
           isInstalling={installServerMutation.isPending}
           open={isInstallDialogOpen}
           onOpenChange={setIsInstallDialogOpen}
