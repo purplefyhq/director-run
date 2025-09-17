@@ -1,7 +1,8 @@
 import { McpLogo } from "../mcp-logo";
 import { McpDescriptionList } from "../mcp-servers/mcp-description-list";
 import { McpToolsTable } from "../mcp-servers/mcp-tools-table";
-import type { MasterRegistryEntry, StoreServerTransport } from "../types";
+import type { MasterRegistryEntry } from "../types";
+import type { MasterWorkspace, MasterWorkspaceTarget } from "../types";
 import { Container } from "../ui/container";
 import { EmptyState, EmptyStateTitle } from "../ui/empty-state";
 import { Markdown } from "../ui/markdown";
@@ -13,14 +14,8 @@ import {
 } from "../ui/section";
 
 interface WorkspaceTargetDetailProps {
-  mcp: {
-    name: string;
-    transport: StoreServerTransport;
-  };
-  proxy: {
-    id: string;
-    name: string;
-  };
+  workspaceTarget: MasterWorkspaceTarget;
+  workspace: MasterWorkspace;
   entryData: Pick<MasterRegistryEntry, "icon" | "readme">;
   description?: string | null;
   toolLinks: Array<{
@@ -35,8 +30,8 @@ interface WorkspaceTargetDetailProps {
 }
 
 export function WorkspaceTargetDetail({
-  mcp,
-  proxy,
+  workspaceTarget,
+  workspace,
   entryData,
   description,
   toolLinks,
@@ -48,14 +43,14 @@ export function WorkspaceTargetDetail({
       <Section>
         <McpLogo src={entryData?.icon} className="size-9" />
         <SectionHeader>
-          <SectionTitle>{mcp.name}</SectionTitle>
+          <SectionTitle>{workspaceTarget.name}</SectionTitle>
           <SectionDescription>
             Installed on{" "}
             <button
-              onClick={() => onProxyClick?.(proxy.id)}
+              onClick={() => onProxyClick?.(workspace.id)}
               className="cursor-pointer text-fg underline"
             >
-              {proxy?.name}
+              {workspace?.name}
             </button>
           </SectionDescription>
         </SectionHeader>
@@ -70,7 +65,7 @@ export function WorkspaceTargetDetail({
           </SectionTitle>
         </SectionHeader>
 
-        <McpDescriptionList transport={mcp.transport} />
+        <McpDescriptionList transport={workspaceTarget.transport} />
       </Section>
 
       <Section>

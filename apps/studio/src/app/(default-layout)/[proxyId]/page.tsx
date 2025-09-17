@@ -6,22 +6,16 @@ import { useEffect, useState } from "react";
 import {
   LayoutView,
   LayoutViewContent,
-  LayoutViewHeader,
 } from "../../../components/layout/layout";
+import { LayoutBreadcrumbHeader } from "../../../components/layout/layout-breadcrumb-header";
 import { McpToolSheet } from "../../../components/mcp-servers/mcp-tool-sheet";
-import { ProxyDetail } from "../../../components/pages/workspace-detail";
+import { WorkspaceDetail } from "../../../components/pages/workspace-detail";
 import { ProxyActionsDropdown } from "../../../components/proxies/proxy-actions-dropdown";
 import { ProxyDeleteConfirmation } from "../../../components/proxies/proxy-delete-confirmation";
 import type { Client } from "../../../components/proxies/proxy-installers";
 import { ProxySettingsSheet } from "../../../components/proxies/proxy-settings-sheet";
 import { ProxySkeleton } from "../../../components/proxies/proxy-skeleton";
 import { Badge, BadgeLabel } from "../../../components/ui/badge";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "../../../components/ui/breadcrumb";
 import { toast } from "../../../components/ui/toast";
 import { DIRECTOR_URL } from "../../../config";
 import { trpc } from "../../../state/client";
@@ -213,23 +207,22 @@ export default function ProxyPage() {
 
   return (
     <LayoutView>
-      <LayoutViewHeader>
-        <Breadcrumb className="grow">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage>{proxy.name}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+      <LayoutBreadcrumbHeader
+        breadcrumbs={[
+          {
+            title: proxy.name,
+          },
+        ]}
+      >
         <ProxyActionsDropdown
           onSettingsClick={() => setSettingsOpen(true)}
           onDeleteClick={() => setDeleteOpen(true)}
         />
-      </LayoutViewHeader>
+      </LayoutBreadcrumbHeader>
 
       <LayoutViewContent>
-        <ProxyDetail
-          proxy={proxy}
+        <WorkspaceDetail
+          workspace={proxy}
           gatewayBaseUrl={DIRECTOR_URL}
           clients={clients}
           installers={installers}

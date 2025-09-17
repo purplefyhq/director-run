@@ -5,10 +5,10 @@ import { useEffect, useState } from "react";
 import {
   LayoutView,
   LayoutViewContent,
-  LayoutViewHeader,
 } from "../../../../../components/layout/layout";
+import { LayoutBreadcrumbHeader } from "../../../../../components/layout/layout-breadcrumb-header";
+import { RegistryDetailSidebar } from "../../../../../components/registry-detail-sidebar";
 import { RegistryItem } from "../../../../../components/registry-item";
-import { RegistryItemAddForm } from "../../../../../components/registry-item-add-form";
 import { RegistryEntrySkeleton } from "../../../../../components/registry/registry-entry-skeleton";
 import { RegistryInstallForm } from "../../../../../components/registry/registry-install-form";
 import { RegistryToolSheet } from "../../../../../components/registry/registry-tool-sheet";
@@ -17,14 +17,6 @@ import {
   SplitViewMain,
   SplitViewSide,
 } from "../../../../../components/split-view";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "../../../../../components/ui/breadcrumb";
 import { Button } from "../../../../../components/ui/button";
 import { Container } from "../../../../../components/ui/container";
 import {
@@ -131,24 +123,17 @@ export default function RegistryEntryPage() {
 
   return (
     <LayoutView>
-      <LayoutViewHeader>
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink
-                onClick={() => router.push("/library")}
-                className="cursor-pointer"
-              >
-                Library
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{entry.title}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
+      <LayoutBreadcrumbHeader
+        breadcrumbs={[
+          {
+            title: "Library",
+            onClick: () => router.push("/library"),
+          },
+          {
+            title: entry.title,
+          },
+        ]}
+      >
         <Popover open={installFormOpen} onOpenChange={setInstallFormOpen}>
           <PopoverTrigger asChild>
             <Button className="ml-auto lg:hidden">Add to proxy</Button>
@@ -160,23 +145,15 @@ export default function RegistryEntryPage() {
             className="w-sm max-w-[80dvw] rounded-[20px] lg:hidden"
           >
             <RegistryInstallForm
-              mcp={entry}
-              proxies={proxies.filter(
-                (proxy) => !proxy.servers.some((it) => it.name === entry.name),
-              )}
-              defaultProxyId={serverId ?? undefined}
-              onSubmit={(values) =>
-                handleInstall({
-                  proxyId: values.proxyId,
-                  entryId: entry.id as unknown as string,
-                  parameters: values.parameters,
-                })
-              }
+              registryEntry={entry}
+              proxies={proxies}
+              entryInstalledOn={entryInstalledOn}
+              onSubmit={handleInstall}
               isSubmitting={installMutation.isPending}
             />
           </PopoverContent>
         </Popover>
-      </LayoutViewHeader>
+      </LayoutBreadcrumbHeader>
 
       <LayoutViewContent>
         <Container size="xl">
@@ -188,7 +165,7 @@ export default function RegistryEntryPage() {
               />
             </SplitViewMain>
             <SplitViewSide>
-              <RegistryItemAddForm
+              <RegistryDetailSidebar
                 entry={entry}
                 proxies={proxies}
                 entryInstalledOn={entryInstalledOn}

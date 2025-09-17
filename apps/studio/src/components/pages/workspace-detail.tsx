@@ -1,53 +1,25 @@
-import { useCopyToClipboard } from "../../hooks/use-copy-to-clipboard";
-import { MCPLinkCard, MCPLinkCardList } from "../mcp-servers/mcp-link-card";
-import { McpToolsTable } from "../mcp-servers/mcp-tools-table";
-import type { AvailableClient, Client } from "../proxies/proxy-installers";
-import { ProxyInstallers } from "../proxies/proxy-installers";
-import { ProxyManualDialog } from "../proxies/proxy-manual-dialog";
-import { ConfiguratorTarget } from "../types";
-import { Button } from "../ui/button";
-import { Container } from "../ui/container";
+import type {} from "../proxies/proxy-installers";
 import {
-  Section,
-  SectionDescription,
-  SectionHeader,
-  SectionSeparator,
-  SectionTitle,
-} from "../ui/section";
-import { toast } from "../ui/toast";
+  WorkspaceSectionClients,
+  type WorkspaceSectionClientsProps,
+} from "../proxies/workspace-section-clients";
+import {
+  WorkspaceSectionHeader,
+  type WorkspaceSectionHeaderProps,
+} from "../proxies/workspace-section-header";
+import {
+  WorkspaceSectionServers,
+  type WorkspaceSectionServersProps,
+} from "../proxies/workspace-section-servers";
+import {
+  WorkspaceSectionTools,
+  type WorkspaceSectionToolsProps,
+} from "../proxies/workspace-section-tools";
+import { Container } from "../ui/container";
+import { SectionSeparator } from "../ui/section";
 
-interface ProxyDetailProps {
-  proxy: {
-    id: string;
-    name: string;
-    description?: string;
-    servers: Array<{
-      name: string;
-    }>;
-  };
-  gatewayBaseUrl: string;
-  clients: Client[];
-  installers: Record<string, boolean>;
-  availableClients: AvailableClient[];
-  isClientsLoading: boolean;
-  onInstall: (proxyId: string, client: ConfiguratorTarget) => void;
-  onUninstall: (proxyId: string, client: ConfiguratorTarget) => void;
-  isInstalling: boolean;
-  isUninstalling: boolean;
-  toolLinks: Array<{
-    title: string;
-    subtitle: string;
-    scroll: boolean;
-    href: string;
-    badges?: React.ReactNode;
-  }>;
-  toolsLoading: boolean;
-  onLibraryClick?: () => void;
-  onServerClick?: (serverId: string) => void;
-}
-
-export function ProxyDetail({
-  proxy,
+export function WorkspaceDetail({
+  workspace,
   gatewayBaseUrl,
   clients,
   installers,
@@ -61,93 +33,43 @@ export function ProxyDetail({
   toolsLoading,
   onLibraryClick,
   onServerClick,
-}: ProxyDetailProps) {
-  const [_, copy] = useCopyToClipboard();
-
-  const handleCopy = async (text: string) => {
-    await copy(text);
-    toast({
-      title: "Copied to clipboard",
-      description: "The endpoint has been copied to your clipboard.",
-    });
-  };
+}: WorkspaceSectionClientsProps &
+  WorkspaceSectionHeaderProps &
+  WorkspaceSectionServersProps &
+  WorkspaceSectionToolsProps) {
   return (
     <Container size="lg">
-      <Section>
-        <SectionHeader>
-          <SectionTitle>{proxy.name}</SectionTitle>
-          <SectionDescription>{proxy.description}</SectionDescription>
-        </SectionHeader>
-      </Section>
+      <WorkspaceSectionHeader workspace={workspace} />
 
       <SectionSeparator />
 
-      <Section>
-        <SectionHeader className="flex flex-row items-center justify-between">
-          <SectionTitle variant="h2" asChild>
-            <h2>Clients</h2>
-          </SectionTitle>
-          <ProxyManualDialog
-            proxyId={proxy.id}
-            gatewayBaseUrl={gatewayBaseUrl}
-            onCopy={handleCopy}
-          >
-            <Button size="sm">Connect manually</Button>
-          </ProxyManualDialog>
-        </SectionHeader>
-        <ProxyInstallers
-          proxyId={proxy.id}
-          gatewayBaseUrl={gatewayBaseUrl}
-          clients={clients}
-          installers={installers}
-          availableClients={availableClients}
-          isLoading={isClientsLoading}
-          onInstall={onInstall}
-          onUninstall={onUninstall}
-          isInstalling={isInstalling}
-          isUninstalling={isUninstalling}
-        />
-      </Section>
+      <WorkspaceSectionClients
+        workspace={workspace}
+        gatewayBaseUrl={gatewayBaseUrl}
+        clients={clients}
+        installers={installers}
+        availableClients={availableClients}
+        isClientsLoading={isClientsLoading}
+        onInstall={onInstall}
+        onUninstall={onUninstall}
+        isInstalling={isInstalling}
+        isUninstalling={isUninstalling}
+      />
 
       <SectionSeparator />
 
-      <Section>
-        <SectionHeader className="flex flex-row items-center justify-between">
-          <SectionTitle variant="h2" asChild>
-            <h2>MCP Servers</h2>
-          </SectionTitle>
-          <Button size="sm" onClick={onLibraryClick}>
-            Add MCP server
-          </Button>
-        </SectionHeader>
-        <MCPLinkCardList>
-          {proxy.servers.map((it) => {
-            return (
-              <MCPLinkCard
-                key={it.name}
-                entry={{
-                  title: it.name,
-                  description: null,
-                  icon: null,
-                  isOfficial: false,
-                }}
-                onClick={() => onServerClick?.(it.name)}
-              />
-            );
-          })}
-        </MCPLinkCardList>
-      </Section>
+      <WorkspaceSectionServers
+        workspace={workspace}
+        onLibraryClick={onLibraryClick}
+        onServerClick={onServerClick}
+      />
 
       <SectionSeparator />
 
-      <Section>
-        <SectionHeader>
-          <SectionTitle variant="h2" asChild>
-            <h2>Tools</h2>
-          </SectionTitle>
-        </SectionHeader>
-        <McpToolsTable links={toolLinks} isLoading={toolsLoading} />
-      </Section>
+      <WorkspaceSectionTools
+        toolLinks={toolLinks}
+        toolsLoading={toolsLoading}
+      />
     </Container>
   );
 }
