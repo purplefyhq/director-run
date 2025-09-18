@@ -1,39 +1,30 @@
-import { McpAddSheet } from "@director.run/studio/components/mcp-servers/mcp-add-sheet.tsx";
-import type { McpAddFormData } from "@director.run/studio/components/mcp-servers/mcp-add-sheet.tsx";
+import { WorkspaceTargetAddSheet } from "@director.run/studio/components/mcp-servers/mcp-add-sheet.tsx";
+import type { WorkspaceTargetFormData } from "@director.run/studio/components/mcp-servers/mcp-add-sheet.tsx";
 import { Button } from "@director.run/studio/components/ui/button.tsx";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 
 const meta = {
   title: "components/sheets/mcp-add-sheet",
-  component: McpAddSheet,
+  component: WorkspaceTargetAddSheet,
   parameters: {
     layout: "fullscreen",
   },
-} satisfies Meta<typeof McpAddSheet>;
+} satisfies Meta<typeof WorkspaceTargetAddSheet>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    onSubmit: (_data: McpAddFormData) => Promise.resolve(),
-  },
-  render: () => {
-    const [open, setOpen] = useState(true);
-
-    const proxies = [
+    onSubmit: (_data: WorkspaceTargetFormData) => Promise.resolve(),
+    workspaces: [
       { id: "proxy-1", name: "Local Proxy" },
       { id: "proxy-2", name: "Remote Proxy" },
-    ];
-
-    const handleSubmit = (data: McpAddFormData) => {
-      console.log("Add to proxy:", data.proxyId);
-      console.log("Server:", JSON.stringify(data.server, null, 2));
-      console.log("Environment variables:", JSON.stringify(data._env, null, 2));
-      console.log("Headers:", JSON.stringify(data._headers, null, 2));
-      return Promise.resolve();
-    };
+    ],
+  },
+  render: ({ workspaces: proxies }) => {
+    const [open, setOpen] = useState(true);
 
     return (
       <div className="min-h-screen bg-surface p-8">
@@ -42,14 +33,24 @@ export const Default: Story = {
             {open ? "Close Sheet" : "Open Sheet"}
           </Button>
         </div>
-        <McpAddSheet
+        <WorkspaceTargetAddSheet
           open={open}
           onOpenChange={setOpen}
-          proxies={proxies}
-          onSubmit={handleSubmit}
+          workspaces={proxies}
+          onSubmit={(data: WorkspaceTargetFormData) => {
+            console.log("Data:", JSON.stringify(data, null, 2));
+          }}
           isSubmitting={false}
         />
       </div>
     );
+  },
+};
+
+export const NotInstalled: Story = {
+  ...Default,
+  args: {
+    ...Default.args,
+    workspaces: undefined,
   },
 };

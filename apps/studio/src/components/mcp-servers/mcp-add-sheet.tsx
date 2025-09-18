@@ -1,3 +1,7 @@
+import {
+  requiredStringSchema,
+  slugStringSchema,
+} from "@director.run/utilities/schema";
 import { PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { type ComponentProps } from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
@@ -26,121 +30,34 @@ import {
   SheetTitle,
 } from "../ui/sheet";
 
-const requiredStringSchema = z.string().trim().min(1, "Required");
-
-const slugStringSchema = z
-  .string()
-  .trim()
-  .min(1, "Required")
-  .regex(
-    /^[a-z0-9._-]+$/,
-    "Only lowercase ASCII letters, digits, and characters ., -, _ are allowed",
-  );
-
-const httpTransportSchema = z.object({
-  type: z.literal("http"),
-  url: requiredStringSchema.url(),
-  headers: z.record(requiredStringSchema, z.string()).optional(),
-});
-
-type HTTPTransport = z.infer<typeof httpTransportSchema>;
-
-const stdioTransportSchema = z.object({
-  type: z.literal("stdio"),
-  command: requiredStringSchema,
-  args: z.array(z.string()),
-  env: z.record(requiredStringSchema, z.string()).optional(),
-});
-
-type STDIOTransport = z.infer<typeof stdioTransportSchema>;
-
-const proxyTransport = z.discriminatedUnion("type", [
-  httpTransportSchema,
-  stdioTransportSchema,
-]);
-
-const ProxyTargetSourceSchema = z.object({
-  name: z.literal("registry"),
-  entryId: requiredStringSchema,
-});
-
-const proxyTargetAttributesSchema = z.object({
-  name: slugStringSchema,
-  transport: proxyTransport,
-  source: ProxyTargetSourceSchema.optional(),
-  toolPrefix: z.string().trim().optional(),
-  disabledTools: z.array(requiredStringSchema).optional(),
-  disabled: z.boolean().optional(),
-});
-
-const nonEmptyTupleSchema = z
-  .array(z.tuple([z.string(), z.string()]))
-  .transform((data) => {
-    return data.filter(([key, value]) => {
-      if (key.trim() === "" || value.trim() === "") {
-        return false;
-      }
-
-      return true;
-    });
-  })
-  .refine(
-    (envVars) => {
-      // All items except the last one must have non-empty strings
-      for (let i = 0; i <= envVars.length - 1; i++) {
-        if (envVars[i][0].trim() === "" || envVars[i][1].trim() === "") {
-          return false;
-        }
-      }
-
-      return true;
-    },
-    {
-      message: "All values must have both name and value",
-    },
-  );
-
-const formSchema = z.object({
-  proxyId: z.string().optional(),
-  server: proxyTargetAttributesSchema,
-  _env: nonEmptyTupleSchema,
-  _headers: nonEmptyTupleSchema,
-});
-
-export type McpAddFormData = z.infer<typeof formSchema>;
-
 interface Proxy {
   id: string;
   name: string;
 }
 
-interface McpAddSheetProps extends ComponentProps<typeof Sheet> {
-  proxies?: Proxy[];
-  onSubmit: (data: McpAddFormData) => Promise<void>;
+interface WorkspaceTargetAddSheetProps extends ComponentProps<typeof Sheet> {
+  workspaces?: Proxy[];
+  onSubmit: (data: WorkspaceTargetFormData) => Promise<void> | void;
   isSubmitting?: boolean;
 }
 
-export function McpAddSheet({
+export function WorkspaceTargetAddSheet({
   open,
   onOpenChange,
-  proxies,
+  workspaces,
   onSubmit,
   isSubmitting = false,
   ...props
-}: McpAddSheetProps) {
+}: WorkspaceTargetAddSheetProps) {
   const defaultValues = {
-    proxyId: proxies?.[0]?.id ?? undefined,
+    workspaceId: workspaces?.[0]?.id ?? undefined,
     server: {
       name: "",
-      transport: {
-        type: "stdio" as const,
-        command: "",
-        args: [],
-        env: {},
-      },
+      type: "stdio" as const,
+      command: "",
+      args: [],
+      env: {},
     },
-    _env: [["", ""]] as [string, string][],
-    _headers: [["", ""]] as [string, string][],
   };
 
   return (
@@ -170,9 +87,9 @@ export function McpAddSheet({
 
           <SectionSeparator />
 
-          <McpAddForm
+          <WorkspaceTargetForm
             defaultValues={defaultValues}
-            proxies={proxies}
+            proxies={workspaces}
             onSubmit={onSubmit}
             isSubmitting={isSubmitting}
           />
@@ -182,24 +99,64 @@ export function McpAddSheet({
   );
 }
 
-interface McpAddFormProps {
-  defaultValues: McpAddFormData;
+interface WorkspaceTargetFormProps {
+  defaultValues: WorkspaceTargetFormData;
   proxies?: Proxy[];
-  onSubmit: (data: McpAddFormData) => Promise<void>;
+  onSubmit: (data: WorkspaceTargetFormData) => Promise<void> | void;
   isSubmitting?: boolean;
 }
 
-function McpAddForm({
+function WorkspaceTargetForm({
   defaultValues,
   proxies,
   onSubmit,
   isSubmitting = false,
-}: McpAddFormProps) {
+}: WorkspaceTargetFormProps) {
   return (
     <FormWithSchema
       schema={formSchema}
-      defaultValues={defaultValues}
-      onSubmit={onSubmit}
+      defaultValues={{
+        ...defaultValues,
+        _env: [{ key: "", value: "" }],
+        _headers: [{ key: "", value: "" }],
+      }}
+      onSubmit={(data) => {
+        if (data.server.type === "stdio") {
+          onSubmit({
+            workspaceId: data.workspaceId,
+            server: {
+              ...data.server,
+              command: data.server.command.split(" ")[0],
+              args: data.server.command.split(" ").slice(1),
+              env: data._env.reduce(
+                (acc, { key, value }) => {
+                  if (!!key) {
+                    acc[key] = value;
+                  }
+                  return acc;
+                },
+                {} as Record<string, string>,
+              ),
+            },
+          });
+        } else if (data.server.type === "http") {
+          onSubmit({
+            workspaceId: data.workspaceId,
+            server: {
+              ...data.server,
+              headers: data._headers.reduce(
+                (acc, { key, value }) => {
+                  if (!!key) {
+                    acc[key] = value;
+                  }
+                  return acc;
+                },
+                {} as Record<string, string>,
+              ),
+            },
+          });
+        }
+      }}
     >
       <McpAddFormFields proxies={proxies} isSubmitting={isSubmitting} />
     </FormWithSchema>
@@ -218,14 +175,14 @@ function McpAddFormFields({
   const { control } = useFormContext();
   const transportType = useWatch({
     control,
-    name: "server.transport.type",
+    name: "server.type",
     defaultValue: "stdio",
   });
 
   return (
     <>
       {proxies && (
-        <SelectNativeField name="proxyId" label="Proxy">
+        <SelectNativeField name="workspaceId" label="Proxy">
           {proxies.map((proxy) => (
             <option key={proxy.id} value={proxy.id}>
               {proxy.name}
@@ -240,7 +197,7 @@ function McpAddFormFields({
           name="server.name"
           placeholder="Enter server name…"
         />
-        <SelectNativeField label="Transport" name="server.transport.type">
+        <SelectNativeField label="Transport" name="server.type">
           <option value="stdio">STDIO</option>
           <option value="http">HTTP</option>
         </SelectNativeField>
@@ -262,7 +219,7 @@ function McpAddFormStdioFields() {
       <TextareaField
         className="min-h-auto"
         label="Command"
-        name="server.transport.command"
+        name="server.command"
         placeholder="e.g. npx -y @modelcontextprotocol/my-server <filepath>"
       />
 
@@ -284,7 +241,7 @@ function McpAddFormHttpFields() {
     <div className="space-y-4">
       <InputField
         label="URL"
-        name="server.transport.url"
+        name="server.url"
         placeholder="Enter server URL…"
       />
 
@@ -313,13 +270,17 @@ function KeyValueFieldArray({
   addSrText: string;
 }) {
   const { control } = useFormContext();
+
   const { fields, append, remove } = useFieldArray({
     control,
     name,
   });
 
   const handleAdd = () => {
-    append(["", ""]);
+    append({
+      key: "",
+      value: "",
+    });
   };
 
   return (
@@ -327,11 +288,11 @@ function KeyValueFieldArray({
       {fields.map((field, index) => (
         <div key={field.id} className="flex flex-row gap-x-2 [&>div]:flex-1">
           <InputField
-            name={`${name}.${index}.0`}
+            name={`${name}.${index}.key`}
             placeholder={keyPlaceholder}
           />
           <InputField
-            name={`${name}.${index}.1`}
+            name={`${name}.${index}.value`}
             placeholder={valuePlaceholder}
           />
           {index < fields.length - 1 ? (
@@ -362,3 +323,43 @@ function KeyValueFieldArray({
     </div>
   );
 }
+
+const WorkspaceStdioTargetAttributesSchema = z.object({
+  name: slugStringSchema,
+  type: z.literal("stdio"),
+  command: requiredStringSchema,
+  args: z.array(z.string()),
+  env: z.record(requiredStringSchema, z.string()).optional(),
+});
+
+const WorkspaceHTTPTargetAttributesSchema = z.object({
+  name: slugStringSchema,
+  type: z.literal("http"),
+  url: requiredStringSchema.url(),
+  headers: z.record(requiredStringSchema, z.string()).optional(),
+});
+
+const formSchema = z.object({
+  workspaceId: z.string().optional(),
+  server: z.discriminatedUnion("type", [
+    WorkspaceStdioTargetAttributesSchema,
+    WorkspaceHTTPTargetAttributesSchema,
+  ]),
+  _env: z.array(
+    z.object({
+      key: z.string(),
+      value: z.string(),
+    }),
+  ),
+  _headers: z.array(
+    z.object({
+      key: z.string(),
+      value: z.string(),
+    }),
+  ),
+});
+
+export type WorkspaceTargetFormData = Omit<
+  z.infer<typeof formSchema>,
+  "_env" | "_headers"
+>;
