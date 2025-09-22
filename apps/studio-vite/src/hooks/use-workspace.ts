@@ -1,7 +1,7 @@
-import { trpc } from "../contexts/gateway-context";
+import { gatewayClient } from "../contexts/backend-context";
 
 export function useWorkspace(workspaceId: string) {
-  const [workspace, clients] = trpc.useQueries((t) => [
+  const [workspace, clients] = gatewayClient.useQueries((t) => [
     t.store.get({ proxyId: workspaceId }),
     t.installer.byProxy.list({ proxyId: workspaceId }),
   ]);
