@@ -2,12 +2,13 @@ import { ChatToUs } from "@director.run/studio/components/chat-to-us.tsx";
 import { Toaster } from "@director.run/studio/components/ui/toast.tsx";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { BrowserRouter } from "react-router-dom";
 import { GATEWAY_URL, REGISTRY_URL } from "./config";
 import { AuthProvider } from "./contexts/auth-context";
 import { useAuth } from "./contexts/auth-context";
 import { BackendProvider } from "./contexts/backend-context";
+import { useWorkspaces } from "./hooks/use-workspaces";
 import { GetStartedPage } from "./pages/get-started";
 import { LoginPage } from "./pages/login-page";
 import { RegistryDetailPage } from "./pages/registry-detail-page";
@@ -28,9 +29,10 @@ export const App = () => {
     return <div>Initializing Auth...</div>;
   }
 
-  if (isAuthenticated) {
-    return (
-      <Routes>
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route element={<ProtectedRoute />}>
         <Route element={<RootLayout />}>
           <Route path="/library" element={<RegistryListPage />} />
           <Route
@@ -46,17 +48,10 @@ export const App = () => {
           <Route path="/new" element={<NewProxyPage />} />
         </Route>
         <Route path="/get-started" element={<GetStartedPage />} />
-        <Route path="*" element={<Navigate to="/settings" replace />} />
-      </Routes>
-    );
-  } else {
-    return (
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    );
-  }
+        <Route path="*" element={<DefaultRoute />} />
+      </Route>
+    </Routes>
+  );
 };
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
@@ -74,3 +69,31 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     {/* </GlobalErrorBoundary> */}
   </React.StrictMode>,
 );
+
+function ProtectedRoute() {
+  const { isAuthenticated, isInitializing } = useAuth();
+
+  if (isInitializing) {
+    return <div>Initializing Auth...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to={"/login"} replace />;
+  }
+
+  return <Outlet />;
+}
+
+function DefaultRoute() {
+  const { data: workspaces, isLoading: isWorkspacesLoading } = useWorkspaces();
+
+  if (isWorkspacesLoading) {
+    return <div>Initializing Auth...</div>;
+  }
+
+  if (workspaces?.length && workspaces.length > 0) {
+    return <Navigate to={`/${workspaces[0].id}`} replace />;
+  } else {
+    return <Navigate to={"/get-started"} replace />;
+  }
+}
