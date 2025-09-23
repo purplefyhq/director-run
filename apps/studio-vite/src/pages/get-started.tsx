@@ -1,24 +1,26 @@
-"use client";
-
-import { ConfiguratorTarget } from "@director.run/client-configurator/index";
-import { useRouter } from "next/navigation";
+// import { ConfiguratorTarget } from "@director.run/client-configurator/index";
+import { GetStartedCompleteDialog } from "@director.run/studio/components/get-started/get-started-complete-dialog.tsx";
+import { GetStartedInstallServerDialog } from "@director.run/studio/components/get-started/get-started-install-server-dialog.tsx";
+import { proxySchema } from "@director.run/studio/components/get-started/get-started-proxy-form.tsx";
+import type { FormValues as ProxyFormValues } from "@director.run/studio/components/get-started/get-started-proxy-form.tsx";
+import { GetStartedPageView } from "@director.run/studio/components/pages/get-started.tsx";
+import { FullScreenLoader } from "@director.run/studio/components/pages/global/loader.tsx";
+import { ConfiguratorTarget } from "@director.run/studio/components/types.ts";
+import { toast } from "@director.run/studio/components/ui/toast.tsx";
+import { useZodForm } from "@director.run/studio/hooks/use-zod-form.tsx";
 import { useEffect, useState } from "react";
 import type { SubmitHandler } from "react-hook-form";
-import { GetStartedCompleteDialog } from "../../components/get-started/get-started-complete-dialog";
-import { GetStartedInstallServerDialog } from "../../components/get-started/get-started-install-server-dialog";
-import { proxySchema } from "../../components/get-started/get-started-proxy-form";
-import type { FormValues as ProxyFormValues } from "../../components/get-started/get-started-proxy-form";
-import { GetStartedPageView } from "../../components/pages/get-started";
-import { FullScreenLoader } from "../../components/pages/global/loader";
-import { toast } from "../../components/ui/toast";
-import { DIRECTOR_URL } from "../../config";
-import { useZodForm } from "../../hooks/use-zod-form";
-import { trpc } from "../../state/client";
+import { useNavigate } from "react-router-dom";
+import { GATEWAY_URL } from "../config";
+import { gatewayClient as trpc } from "../contexts/backend-context";
+import { useClients } from "../hooks/use-clients.ts";
+import { useRegistryEntries } from "../hooks/use-registry-entries";
+import { useWorkspaces } from "../hooks/use-workspaces";
 
 export type ClientId = "claude" | "cursor" | "vscode";
 
-export default function GetStartedPage() {
-  const router = useRouter();
+export function GetStartedPage() {
+  const navigate = useNavigate();
   // Search and proxy state
   const [searchQuery, setSearchQuery] = useState("");
   const [currentProxyId, setCurrentProxyId] = useState<string | null>(null);
@@ -34,17 +36,24 @@ export default function GetStartedPage() {
   const utils = trpc.useUtils();
 
   // Proxy queries
-  const proxyListQuery = trpc.store.getAll.useQuery();
-  const registryEntriesQuery = trpc.registry.getEntries.useQuery(
-    {
-      pageIndex: 0,
-      pageSize: 20,
-      searchQuery,
-    },
-    {
-      placeholderData: (prev) => prev,
-    },
-  );
+  //   const proxyListQuery = trpc.store.getAll.useQuery();
+
+  const proxyListQuery = useWorkspaces();
+  const registryEntriesQuery = useRegistryEntries({
+    pageIndex: 0,
+    pageSize: 20,
+    searchQuery,
+  });
+  //   const registryEntriesQuery = trpc.registry.getEntries.useQuery(
+  //     {
+  //       pageIndex: 0,
+  //       pageSize: 20,
+  //       searchQuery,
+  //     },
+  //     {
+  //       placeholderData: (prev) => prev,
+  //     },
+  //   );
 
   const installersQuery = trpc.installer.byProxy.list.useQuery(
     {
@@ -56,7 +65,10 @@ export default function GetStartedPage() {
   );
 
   // Additional queries for installers
-  const listClientsQuery = trpc.installer.allClients.useQuery();
+  //   const listClientsQuery = trpc.installer.allClients.useQuery();
+
+  const listClientsQuery = useClients(currentProxyId as string);
+
   const entryQuery = trpc.registry.getEntryByName.useQuery(
     {
       name: selectedRegistryEntryName || "",
@@ -137,14 +149,14 @@ export default function GetStartedPage() {
     await createProxyMutation.mutateAsync({ ...values, servers: [] });
   };
 
-  const handleClientInstall = (client: ClientId) => {
+  const handleClientInstall = (client: string) => {
     if (!currentProxy?.id) {
       return;
     }
     installationMutation.mutate({
       proxyId: currentProxy.id,
       client: client as ConfiguratorTarget,
-      baseUrl: DIRECTOR_URL,
+      baseUrl: GATEWAY_URL,
     });
   };
 
@@ -210,8 +222,8 @@ export default function GetStartedPage() {
 
       <GetStartedCompleteDialog
         open={isCompleted}
-        onClickLibrary={() => router.push("/library")}
-        onClickWorkspace={() => router.push("/")}
+        onClickLibrary={() => navigate("/library")}
+        onClickWorkspace={() => navigate("/")}
       />
     </>
   );

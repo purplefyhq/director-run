@@ -1,21 +1,42 @@
+import type { Tool as McpSdkTool } from "@modelcontextprotocol/sdk/types.js";
+import { proxyQuerySerializer } from "../../state/use-proxy-query";
 import { McpToolsTable } from "../mcp-servers/mcp-tools-table";
+import { Badge, BadgeLabel } from "../ui/badge";
 import { Section, SectionHeader, SectionTitle } from "../ui/section";
 
 export interface WorkspaceSectionToolsProps {
-  toolLinks: Array<{
-    title: string;
-    subtitle: string;
-    scroll: boolean;
-    href: string;
-    badges?: React.ReactNode;
-  }>;
+  tools: McpSdkTool[];
   toolsLoading: boolean;
+  onToolClick: (tool: McpSdkTool) => void | Promise<void>;
 }
 
 export function WorkspaceSectionTools({
-  toolLinks,
+  tools,
   toolsLoading,
+  onToolClick,
 }: WorkspaceSectionToolsProps) {
+  const toolLinks = tools
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((tool) => {
+      const server = tool.description?.match(/\[([^\]]+)\]/)?.[1];
+      return {
+        title: tool.name,
+        subtitle: tool.description?.replace(/\[([^\]]+)\]/g, "") || "",
+        scroll: false,
+        href: `${proxyQuerySerializer({
+          toolId: tool.name,
+          serverId: server,
+        })}`,
+        onClick: () => onToolClick(tool),
+        badges: server && (
+          <Badge>
+            <BadgeLabel uppercase>{server}</BadgeLabel>
+          </Badge>
+        ),
+      };
+    });
+
   return (
     <Section>
       <SectionHeader>
