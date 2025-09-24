@@ -24,7 +24,10 @@ const config = {
       },
       resolve: {
         alias: {
-          "@director.run/studio": resolve(__dirname, "../../studio/src"),
+          "@director.run/design": resolve(
+            __dirname,
+            "../../../packages/design/src",
+          ),
         },
       },
     });
