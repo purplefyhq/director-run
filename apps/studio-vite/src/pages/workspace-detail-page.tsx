@@ -1,5 +1,6 @@
 import { LayoutBreadcrumbHeader } from "@director.run/studio/components/layout/layout-breadcrumb-header.tsx";
 import { LayoutViewContent } from "@director.run/studio/components/layout/layout.tsx";
+import { FullScreenError } from "@director.run/studio/components/pages/global/error.tsx";
 import { ProxyActionsDropdown } from "@director.run/studio/components/proxies/proxy-actions-dropdown.tsx";
 import { ProxyDeleteConfirmation } from "@director.run/studio/components/proxies/proxy-delete-confirmation.tsx";
 import { ProxySettingsSheet } from "@director.run/studio/components/proxies/proxy-settings-sheet.tsx";
@@ -35,7 +36,8 @@ export const WorkspaceDetailPage = () => {
     throw new Error("Workspace ID is required");
   }
 
-  const { workspace, isLoading } = useWorkspace(workspaceId);
+  const { workspace, isWorkspaceLoading, workspaceError } =
+    useWorkspace(workspaceId);
 
   const { data: clients, isLoading: isClientsLoading } =
     useClients(workspaceId);
@@ -58,12 +60,19 @@ export const WorkspaceDetailPage = () => {
     },
   });
 
-  if (isLoading) {
+  if (isWorkspaceLoading) {
     return <ProxySkeleton />;
   }
 
-  if (!workspace) {
-    throw new Error("Workspace not found");
+  if (workspaceError || !workspace) {
+    return (
+      <FullScreenError
+        icon="dead-smiley"
+        fullScreen={true}
+        title={"Unexpected Error"}
+        subtitle={workspaceError?.message}
+      />
+    );
   }
 
   return (
