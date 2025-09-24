@@ -1,6 +1,7 @@
-import { Analytics } from "@vercel/analytics/next";
-import type { Metadata } from "next";
+"use client";
+
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { FullScreenError } from "../components/pages/global/error";
 
 import "./globals.css";
 
@@ -14,14 +15,6 @@ const mono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: { absolute: "director.run", template: "%s | director.run" },
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,9 +23,24 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${sans.variable} ${mono.variable} antialiased`}>
-        {children}
-        <Analytics />
+        <PleaseUpdate />
       </body>
     </html>
+  );
+}
+
+function PleaseUpdate() {
+  return (
+    <FullScreenError
+      title={"Please Update Director"}
+      fullScreen={true}
+      subtitle={
+        "This version of the studio is no longer used. Please update the CLI to use the hosted version."
+      }
+      data={[
+        "$ npm install -g @director.run/cli@latest",
+        "$ director quickstart",
+      ].join("\n")}
+    />
   );
 }
