@@ -1,18 +1,12 @@
-import { t } from "@director.run/utilities/trpc";
-import { z } from "zod";
-
 import { HTTPClient } from "@director.run/mcp/client/http-client";
 import { AppError, ErrorCode } from "@director.run/utilities/error";
+import { t } from "@director.run/utilities/trpc";
+import { z } from "zod";
 import {
   type ServerConfigEntry,
   ServerConfigEntrySchema,
 } from "../../config/schema";
 import { restartConnectedClients } from "../../helpers";
-import {
-  serializeProxyServer,
-  serializeProxyServerTarget,
-  serializeProxyServers,
-} from "../../serializers";
 import type { WorkspaceTarget } from "../../workspaces/workspace";
 import { WorkspaceStore } from "../../workspaces/workspace-store";
 
@@ -43,40 +37,32 @@ export function createProxyStoreRouter({
 }: { proxyStore: WorkspaceStore }) {
   return t.router({
     getAll: t.procedure.query(async () => {
-      return await serializeProxyServers(await proxyStore.getAll());
+      return await Promise.all(
+        await proxyStore.getAll().map((proxy) => proxy.toPlainObject()),
+      );
     }),
 
     get: t.procedure
       .input(
         z.object({
           proxyId: z.string(),
-          queryParams: z
-            .object({
-              includeInMemoryTargets: z.boolean().optional(),
-            })
-            .optional(),
+          queryParams: z.object({}).optional(),
         }),
       )
       .query(async ({ input }) => {
         const proxy = await proxyStore.get(input.proxyId);
-        const prompts = await proxy.listPrompts();
-
-        return await serializeProxyServer(proxy, {
-          ...input.queryParams,
-          prompts,
-        });
+        return await proxy.toPlainObject();
       }),
 
     create: t.procedure.input(ProxyCreateSchema).mutation(async ({ input }) => {
-      return await serializeProxyServer(
+      return (
         await proxyStore.create({
           name: input.name,
           description: input.description ?? undefined,
           servers: input.servers?.map(oldServerToTargetParams),
-        }),
-      );
+        })
+      ).toPlainObject();
     }),
-
     update: t.procedure
       .input(
         z.object({
@@ -90,7 +76,7 @@ export function createProxyStoreRouter({
           name: input.attributes.name,
           description: input.attributes.description ?? undefined,
         });
-        return await serializeProxyServer(updated);
+        return await updated.toPlainObject();
       }),
     delete: t.procedure
       .input(z.object({ proxyId: z.string() }))
@@ -118,7 +104,10 @@ export function createProxyStoreRouter({
         );
 
         await restartConnectedClients(proxy);
-        return await serializeProxyServerTarget(target, input.queryParams);
+        return await target.toPlainObject({
+          tools: input.queryParams?.includeTools,
+          connectionInfo: true,
+        });
       }),
 
     callTool: t.procedure
@@ -159,7 +148,10 @@ export function createProxyStoreRouter({
           input.attributes,
         );
         await restartConnectedClients(proxy);
-        return await serializeProxyServerTarget(server, input.queryParams);
+        return await server.toPlainObject({
+          tools: input.queryParams?.includeTools,
+          connectionInfo: true,
+        });
       }),
 
     getServer: t.procedure
@@ -178,7 +170,10 @@ export function createProxyStoreRouter({
         const proxy = await proxyStore.get(input.proxyId);
         const target = await proxy.getTarget(input.serverName);
 
-        return await serializeProxyServerTarget(target, input.queryParams);
+        return await target.toPlainObject({
+          tools: input.queryParams?.includeTools,
+          connectionInfo: true,
+        });
       }),
 
     authenticate: t.procedure
@@ -217,7 +212,9 @@ export function createProxyStoreRouter({
         const proxy = await proxyStore.get(input.proxyId);
         const server = await proxy.removeTarget(input.serverName);
         await restartConnectedClients(proxy);
-        return await serializeProxyServerTarget(server);
+        return await server.toPlainObject({
+          connectionInfo: true,
+        });
       }),
 
     addPrompt: t.procedure
